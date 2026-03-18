@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS agents (
   model             TEXT NOT NULL,
   status            TEXT NOT NULL DEFAULT 'idle',
   workspace         TEXT NOT NULL,
+  write_workspace_md INTEGER NOT NULL DEFAULT 1,
+  store_records_in_workspace INTEGER NOT NULL DEFAULT 1,
   ctx_pct           REAL NOT NULL DEFAULT 0,
   tokens_used       INTEGER NOT NULL DEFAULT 0,
   tokens_total      INTEGER NOT NULL DEFAULT 0,

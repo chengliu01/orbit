@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import { getDb } from '../db/client.js';
-import { resolveWorkspacePath } from '../fs/layout.js';
+import { agentFolderPath, resolveWorkspacePath } from '../fs/layout.js';
 export async function attachmentsRoutes(app) {
     // POST /api/attachments — multipart upload
     app.post('/api/attachments', async (req, reply) => {
@@ -28,7 +28,9 @@ export async function attachmentsRoutes(app) {
                     continue;
                 }
                 const workspacePath = resolveWorkspacePath(agent.workspace) || agent.workspace;
-                const attDir = join(workspacePath, 'agents', agentId, 'attachments');
+                const attDir = agent.store_records_in_workspace === 1
+                    ? join(workspacePath, 'agents', agentId, 'attachments')
+                    : join(agentFolderPath(agent.date, agent.todo_id, agentId), 'attachments');
                 await fs.mkdir(attDir, { recursive: true });
                 const ts = Date.now();
                 const safeFilename = part.filename.replace(/[^a-zA-Z0-9._-]/g, '_');

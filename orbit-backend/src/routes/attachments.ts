@@ -3,12 +3,13 @@ import { nanoid } from 'nanoid';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 import { getDb } from '../db/client.js';
-import { resolveWorkspacePath } from '../fs/layout.js';
+import { agentFolderPath, resolveWorkspacePath } from '../fs/layout.js';
 
 interface AgentRow {
   id: string;
   todo_id: string;
   workspace: string;
+  store_records_in_workspace: number;
 }
 
 interface TodoRow {
@@ -43,7 +44,9 @@ export async function attachmentsRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const workspacePath = resolveWorkspacePath(agent.workspace) || agent.workspace;
-        const attDir = join(workspacePath, 'agents', agentId, 'attachments');
+        const attDir = agent.store_records_in_workspace === 1
+          ? join(workspacePath, 'agents', agentId, 'attachments')
+          : join(agentFolderPath(agent.date, agent.todo_id, agentId), 'attachments');
         await fs.mkdir(attDir, { recursive: true });
 
         const ts = Date.now();

@@ -373,9 +373,23 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 option{background:var(--bg3)}
 .fn{font-size:10px;color:var(--t2);margin-top:3px;line-height:1.4}
 .fn code{font-family:var(--mono);background:var(--bg3);padding:1px 4px;border-radius:4px;color:var(--ac)}
+.opt-card{margin-top:10px;padding:10px 11px;border:1.5px solid var(--b0);border-radius:var(--rmd);background:var(--bg1)}
+.opt-card-lbl{font-size:10px;font-weight:800;color:var(--t1);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.opt-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0}
+.opt-row+.opt-row{border-top:1px solid var(--b0)}
+.opt-check{margin-top:2px}
+.opt-body{flex:1}
+.opt-title{font-size:11px;color:var(--t0);font-weight:700}
+.opt-desc{font-size:10px;color:var(--t2);line-height:1.5;margin-top:2px}
 .workspace-note{background:var(--bg3);border:1.5px solid var(--b0);border-radius:var(--rmd);padding:8px 10px;margin-top:4px}
 .workspace-note-lbl{font-size:10px;font-weight:700;color:var(--ac);margin-bottom:4px;display:flex;align-items:center;gap:4px}
 .workspace-note p{font-size:11px;color:var(--t2);line-height:1.5}
+/* folder pick row */
+.ws-pick-row{display:flex;gap:5px;align-items:center}
+.ws-pick-row .fins{flex:1;min-width:0}
+.ws-pick-btn{flex-shrink:0;height:34px;padding:0 11px;border-radius:var(--rmd);border:1.5px solid var(--b1);background:var(--bg3);color:var(--t1);font-size:11px;font-weight:700;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s ease;white-space:nowrap}
+.ws-pick-btn:hover{background:var(--bg4);color:var(--t0);border-color:var(--acb);transform:translateY(-1px)}
+.ws-pick-btn:active{transform:translateY(0) scale(.97)}
 .mact{display:flex;gap:7px;justify-content:flex-end;margin-top:15px}
 .btn{padding:7px 16px;border-radius:99px;font-size:12px;font-weight:800;cursor:pointer;border:none;font-family:var(--sans);transition:all .2s ease}
 .btn:active{transform:scale(0.97)}
@@ -385,6 +399,15 @@ option{background:var(--bg3)}
 .btn-p:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 14px rgba(62,207,142,0.35)}
 .btn-r{background:linear-gradient(135deg,var(--re),#f87171);color:#fff}
 
+/* waiting bubble */
+.waiting-bubble{display:flex;align-items:center;gap:8px;padding:4px 0}
+.waiting-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1.5px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;animation:kawaii-float 2s ease-in-out infinite}
+.waiting-dots{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1.5px solid var(--b1);border-radius:99px 99px 99px 4px;padding:8px 14px}
+.wdot{width:7px;height:7px;border-radius:50%;animation:wdot-jump 1.1s ease-in-out infinite}
+.wdot:nth-child(1){background:var(--ac);animation-delay:0s}
+.wdot:nth-child(2){background:var(--pk);animation-delay:.18s}
+.wdot:nth-child(3){background:var(--bl);animation-delay:.36s}
+@keyframes wdot-jump{0%,80%,100%{transform:translateY(0) scale(1);opacity:.5}40%{transform:translateY(-6px) scale(1.15);opacity:1}}
 /* animations */
 .rdots{display:inline-flex;align-items:center;gap:3px}
 .rd{width:4px;height:4px;border-radius:50%;background:var(--ac);animation:rd 1.2s ease-in-out infinite}
@@ -430,6 +453,11 @@ option{background:var(--bg3)}
 .ntab{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer;color:var(--t2);border:1.5px solid transparent;transition:all .15s}
 .ntab.on{background:var(--bg3);color:var(--t0);border-color:var(--b1)}
 .ntab:hover:not(.on){color:var(--t1);transform:translateY(-1px)}
+.md-shortcuts{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px 0 37px;font-size:10px;color:var(--t2)}
+.md-slash{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 0 37px}
+.md-slash-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid var(--b0);border-radius:999px;background:var(--bg2);cursor:pointer;font-size:10px;color:var(--t1);transition:background .12s,color .12s,border-color .12s}
+.md-slash-item:hover,.md-slash-item.on{background:var(--bg3);color:var(--t0);border-color:var(--acb)}
+.md-slash-k{font-family:var(--mono);font-size:9px;color:var(--t2)}
 /* model select in status bar */
 .smodel-sel{background:transparent;border:none;outline:none;color:var(--t2);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;max-width:120px}
 .smodel-sel option{background:var(--bg3);color:var(--t0)}
@@ -569,6 +597,59 @@ function normalizePaneWidths(leftWidth,rightWidth,totalWidth){
   left=clamp(left,MIN_LEFT_W,leftMax);
   return {left:left,right:right};
 }
+function focusTextareaSelection(el,start,end){
+  requestAnimationFrame(function(){
+    if(!el)return;
+    el.focus();
+    el.setSelectionRange(start,end);
+  });
+}
+function wrapSelectedText(value,start,end,before,after,placeholder){
+  var hasSel=start!==end;
+  var inner=hasSel?value.slice(start,end):(placeholder||'text');
+  var next=value.slice(0,start)+before+inner+after+value.slice(end);
+  var innerStart=start+before.length;
+  var innerEnd=innerStart+inner.length;
+  return {
+    value:next,
+    selectionStart:hasSel?innerStart:innerStart,
+    selectionEnd:hasSel?innerEnd:innerEnd
+  };
+}
+function getCurrentLineBounds(value,cursor){
+  var safeCursor=Math.max(0,Math.min(cursor,value.length));
+  var lineStart=value.lastIndexOf('\n',Math.max(0,safeCursor-1))+1;
+  var lineEnd=value.indexOf('\n',safeCursor);
+  if(lineEnd===-1)lineEnd=value.length;
+  return {lineStart:lineStart,lineEnd:lineEnd,line:value.slice(lineStart,lineEnd)};
+}
+function replaceCurrentLine(value,cursor,replacement,selectStartOffset,selectEndOffset){
+  var bounds=getCurrentLineBounds(value,cursor);
+  var next=value.slice(0,bounds.lineStart)+replacement+value.slice(bounds.lineEnd);
+  return {
+    value:next,
+    selectionStart:bounds.lineStart+selectStartOffset,
+    selectionEnd:bounds.lineStart+selectEndOffset
+  };
+}
+var MD_SLASH_COMMANDS=[
+  {id:'h1',label:'Heading 1',hint:'#',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'# ',2,2);}},
+  {id:'h2',label:'Heading 2',hint:'##',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'## ',3,3);}},
+  {id:'bullet',label:'Bullet List',hint:'- list',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'- ',2,2);}},
+  {id:'todo',label:'Todo List',hint:'[ ]',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'- [ ] ',6,6);}},
+  {id:'quote',label:'Quote',hint:'>',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'> ',2,2);}},
+  {id:'codeblock',label:'Code Block',hint:'```',apply:function(value,cursor){return replaceCurrentLine(value,cursor,'```\n\n```',4,4);}}
+];
+function getMarkdownSlashState(value,cursor){
+  var bounds=getCurrentLineBounds(value,cursor);
+  if(!bounds.line.startsWith('/'))return null;
+  var query=bounds.line.slice(1).trim().toLowerCase();
+  var options=MD_SLASH_COMMANDS.filter(function(cmd){
+    return !query||cmd.label.toLowerCase().includes(query)||cmd.hint.toLowerCase().includes(query);
+  });
+  if(!options.length)return null;
+  return {lineStart:bounds.lineStart,lineEnd:bounds.lineEnd,query:query,options:options};
+}
 document.body.setAttribute('data-theme',readStoredValue('orbit.theme','dark'));
 
 // ── WORKSPACE.md template ──
@@ -644,6 +725,14 @@ function debounce(key,fn,ms){clearTimeout(_debounceTimers[key]);_debounceTimers[
 
 // ── helpers ──
 function RunDots(){return h('span',{className:'rdots'},h('span',{className:'rd'}),h('span',{className:'rd'}),h('span',{className:'rd'}))}
+function WaitingBubble(){return h('div',{className:'waiting-bubble'},
+  h('div',{className:'waiting-avatar'},'🤖'),
+  h('div',{className:'waiting-dots'},
+    h('span',{className:'wdot'}),
+    h('span',{className:'wdot'}),
+    h('span',{className:'wdot'})
+  )
+)}
 function MdView(p){return h('div',{className:'md',dangerouslySetInnerHTML:{__html:renderMd(p.text)}})}
 
 function toolIcon(tool){
@@ -1025,27 +1114,30 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onRenameAgent,
       h('div',{className:'ws-info'},
         h('span',{className:'ws-lbl'},'ws'),
         h('span',{className:'ws-path'},ag.workspace),
-        h('span',{className:'ws-badge'},'WORKSPACE.md')
+        h('span',{className:'ws-badge'},ag.writeWorkspaceMd?'WORKSPACE.md':'metadata off')
       ),
       // chat thread
       h('div',{className:'chat-thread'},
         renderChatThread(ag.messages),
+        (()=>{
+          if(ag.status!=='running')return null;
+          const msgs=ag.messages||[];
+          const last=msgs[msgs.length-1];
+          if(last&&last.kind==='out'&&last.streaming)return null;
+          if(last&&last.kind==='tool'&&last.status==='running')return null;
+          return h(WaitingBubble);
+        })(),
         h('div',{ref:chatEnd})
       ),
       // composer
       h(Composer,{agentStatus:ag.status,onSend:handleSend,onCancel:()=>onCancel&&onCancel(ag.id)}),
       // footer actions
       h('div',{className:'aftr'},
-        ag.status==='running'&&h(Fragment,null,
-          h('button',{className:'fbtn',onClick:()=>onInterrupt&&onInterrupt(ag.id)},'pause'),
-          h('button',{className:'fbtn'},'compact'),
-          h('button',{className:'fbtn'},'clean')
-        ),
-        ag.status==='finished'&&h(Fragment,null,
-          h('button',{className:'fbtn',onClick:()=>onSend&&onSend(ag.id,{text:'continue',attachments:[]})},'resume'),
-          h('button',{className:'fbtn'},'view diff')
-        ),
-        ag.status==='idle'&&h('button',{className:'fbtn',onClick:()=>onSend&&onSend(ag.id,{text:'continue',attachments:[]})},'resume'),
+        ag.status==='running'&&h('button',{className:'fbtn',onClick:()=>onInterrupt&&onInterrupt(ag.id)},'pause'),
+        (ag.status==='finished'||ag.status==='idle')&&h('button',{className:'fbtn',onClick:()=>onSend&&onSend(ag.id,{text:'continue',attachments:[]})},'resume'),
+        ag.status==='finished'&&h('button',{className:'fbtn'},'view diff'),
+        h('button',{className:'fbtn'},'compact'),
+        h('button',{className:'fbtn'},'clean'),
         h('button',{className:'fbtn',onClick:()=>startRename(ag),disabled:renamingId===ag.id},'rename'),
         h('div',{className:'fsp'}),
         h('button',{className:'fbtn d',onClick:()=>onDelAgent(ag.id)},'delete')
@@ -1060,6 +1152,8 @@ function NewAgentModal({todo,onClose,onCreate}){
   const[model,setModel]=useState('gpt-5.4');
   const[reasoningEffort,setReasoningEffort]=useState('medium');
   const[ws,setWs]=useState('');
+  const[writeWorkspaceMd,setWriteWorkspaceMd]=useState(true);
+  const[storeRecordsInWorkspace,setStoreRecordsInWorkspace]=useState(true);
   const[modelMap,setModelMap]=useState({
     codex:{defaultModel:'gpt-5.4',defaultReasoningEffort:'medium',models:[{id:'gpt-5.4',reasoningEfforts:['low','medium','high','xhigh']}]},
     'claude-code':{defaultModel:'claude-sonnet-4-5',models:[{id:'claude-sonnet-4-5'}]}
@@ -1079,6 +1173,7 @@ function NewAgentModal({todo,onClose,onCreate}){
   const models=cliConfig.models||[];
   const selectedModel=models.find(m=>m.id===model)||models[0]||null;
   const reasoningOptions=selectedModel&&selectedModel.reasoningEfforts?selectedModel.reasoningEfforts:[];
+  const hasCustomWorkspace=ws.trim().length>0;
   return h('div',{className:'ov',onClick:e=>{if(e.target===e.currentTarget)onClose();}},
     h('div',{className:'mod'},
       h('div',{className:'mod-t'},'✨ New Agent'),
@@ -1118,19 +1213,71 @@ function NewAgentModal({todo,onClose,onCreate}){
       ),
       h('div',{className:'fl'},
         h('label',null,'Workspace folder ',h('span',{style:{color:'var(--t2)',fontWeight:400}},'(optional)')),
-        h('input',{className:'fins',placeholder:'default: '+defWs,value:ws,onChange:e=>setWs(e.target.value)}),
+        h('div',{className:'ws-pick-row'},
+          h('input',{className:'fins',placeholder:'default: '+defWs,value:ws,onChange:e=>setWs(e.target.value)}),
+          h('button',{className:'ws-pick-btn',type:'button',onClick:async()=>{
+            try{
+              const res=await apiFetch('/workspace/pick-directory');
+              if(res&&res.path)setWs(res.path);
+            }catch(e){
+              console.error('Directory picker failed',e);
+            }
+          }},
+            h('svg',{width:13,height:13,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},
+              h('path',{d:'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z'})
+            ),
+            '浏览'
+          )
+        ),
         h('div',{className:'fn'},'Leave empty to use this todo\'s folder as workspace')
+      ),
+      hasCustomWorkspace&&h('div',{className:'opt-card'},
+        h('div',{className:'opt-card-lbl'},'Custom Workspace Options'),
+        h('label',{className:'opt-row'},
+          h('input',{className:'opt-check',type:'checkbox',checked:writeWorkspaceMd,onChange:e=>setWriteWorkspaceMd(e.target.checked)}),
+          h('div',{className:'opt-body'},
+            h('div',{className:'opt-title'},'Create WORKSPACE.md in custom workspace'),
+            h('div',{className:'opt-desc'},'If enabled, Orbit writes and keeps ',h('code',null,'WORKSPACE.md'),' updated in the custom directory.')
+          )
+        ),
+        h('label',{className:'opt-row'},
+          h('input',{className:'opt-check',type:'checkbox',checked:storeRecordsInWorkspace,onChange:e=>setStoreRecordsInWorkspace(e.target.checked)}),
+          h('div',{className:'opt-body'},
+            h('div',{className:'opt-title'},'Store Orbit records in custom workspace'),
+            h('div',{className:'opt-desc'},'If disabled, attachments and later Orbit-generated records stay under the default local todo folder instead of the custom directory.')
+          )
+        )
       ),
       h('div',{className:'workspace-note'},
         h('div',{className:'workspace-note-lbl'},
           h('svg',{width:10,height:10,viewBox:'0 0 16 16',fill:'currentColor'},h('path',{d:'M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 110 2 1 1 0 010-2zm-1 4h2v4H7V8z'})),
-          'WORKSPACE.md will be auto-generated'
+          hasCustomWorkspace
+            ? 'Custom workspace write rules'
+            : 'WORKSPACE.md will be auto-generated'
         ),
-        h('p',null,'Orbit will create ',h('code',null,'WORKSPACE.md'),' in the workspace folder describing the directory structure, permissions, and task context. The agent reads this on startup.')
+        hasCustomWorkspace
+          ?h('p',null,
+              'The agent will still run in the custom workspace. The two options above control whether Orbit writes ',
+              h('code',null,'WORKSPACE.md'),
+              ' and follow-up record files into that directory.'
+            )
+          :h('p',null,
+              'Orbit will create ',
+              h('code',null,'WORKSPACE.md'),
+              ' in the workspace folder describing the directory structure, permissions, and task context. The agent reads this on startup.'
+            )
       ),
       h('div',{className:'mact'},
         h('button',{className:'btn btn-g',onClick:onClose},'Cancel'),
-        h('button',{className:'btn btn-p',onClick:()=>onCreate({cli,model,reasoningEffort:cli==='codex'?reasoningEffort:null,workspace:ws.trim(),prompt:''})},'Launch Agent')
+        h('button',{className:'btn btn-p',onClick:()=>onCreate({
+          cli,
+          model,
+          reasoningEffort:cli==='codex'?reasoningEffort:null,
+          workspace:ws.trim(),
+          writeWorkspaceMd:hasCustomWorkspace?writeWorkspaceMd:true,
+          storeRecordsInWorkspace:hasCustomWorkspace?storeRecordsInWorkspace:true,
+          prompt:''
+        })},'Launch Agent')
       )
     )
   )
@@ -1148,7 +1295,13 @@ function TodoCard({todo,todos,agents,isSel,isExp,isDragOver,onSel,onToggle,onTog
   const[editingSubId,setEditingSubId]=useState(null);
   const[editingSubVal,setEditingSubVal]=useState('');
   const[isTitleComposing,setIsTitleComposing]=useState(false);
+  const[noteSlashState,setNoteSlashState]=useState(null);
+  const[noteSlashIndex,setNoteSlashIndex]=useState(0);
   const subInpRef=useRef(null);
+  const noteRef=useRef(null);
+  const noteHistoryRef=useRef([{value:todo.note,selectionStart:0,selectionEnd:0}]);
+  const noteHistoryIndexRef=useRef(0);
+  const applyingNoteHistoryRef=useRef(false);
   const children=(todo.children||[]).map(id=>todos[id]).filter(Boolean);
   const runAg=(todo.agentIds||[]).filter(id=>agents[id]&&agents[id].status==='running').length;
   const finAg=(todo.agentIds||[]).filter(id=>agents[id]&&agents[id].status==='finished').length;
@@ -1157,6 +1310,22 @@ function TodoCard({todo,todos,agents,isSel,isExp,isDragOver,onSel,onToggle,onTog
   const ckState=todo.status==='done'?'ck':children.length>0&&doneCh>0&&doneCh<children.length?'part':'';
   useEffect(()=>{setTval(todo.title);},[todo.title]);
   useEffect(()=>{setNval(todo.note);},[todo.note]);
+  useEffect(()=>{
+    setNoteSlashState(null);
+    setNoteSlashIndex(0);
+  },[todo.id,previewOnly]);
+  useEffect(()=>{
+    noteHistoryRef.current=[{value:todo.note,selectionStart:0,selectionEnd:0}];
+    noteHistoryIndexRef.current=0;
+    applyingNoteHistoryRef.current=false;
+  },[todo.id]);
+  useEffect(()=>{
+    var current=noteHistoryRef.current[noteHistoryIndexRef.current];
+    if(document.activeElement===noteRef.current)return;
+    if(current&&current.value===todo.note)return;
+    noteHistoryRef.current=[{value:todo.note,selectionStart:0,selectionEnd:0}];
+    noteHistoryIndexRef.current=0;
+  },[todo.note]);
   function commitTitle(){
     const v=tval.trim();
     if(!v){setTval(todo.title);setEditTitle(false);return;}
@@ -1172,6 +1341,100 @@ function TodoCard({todo,todos,agents,isSel,isExp,isDragOver,onSel,onToggle,onTog
     if(next&&onUpdSubTitle)onUpdSubTitle(subId,next);
     setEditingSubId(null);
     setEditingSubVal('');
+  }
+  function pushNoteHistory(value,selectionStart,selectionEnd){
+    if(applyingNoteHistoryRef.current)return;
+    var history=noteHistoryRef.current;
+    var current=history[noteHistoryIndexRef.current];
+    if(current&&current.value===value&&current.selectionStart===selectionStart&&current.selectionEnd===selectionEnd)return;
+    var nextHistory=history.slice(0,noteHistoryIndexRef.current+1);
+    nextHistory.push({value:value,selectionStart:selectionStart,selectionEnd:selectionEnd});
+    if(nextHistory.length>150)nextHistory=nextHistory.slice(nextHistory.length-150);
+    noteHistoryRef.current=nextHistory;
+    noteHistoryIndexRef.current=nextHistory.length-1;
+  }
+  function syncNoteValue(next,selectionStart,selectionEnd){
+    setNval(next);
+    onUpdNote(todo.id,next);
+    if(selectionStart!=null&&selectionEnd!=null)pushNoteHistory(next,selectionStart,selectionEnd);
+  }
+  function applyNoteHistory(nextIndex){
+    var entry=noteHistoryRef.current[nextIndex];
+    if(!entry)return;
+    noteHistoryIndexRef.current=nextIndex;
+    applyingNoteHistoryRef.current=true;
+    setNval(entry.value);
+    onUpdNote(todo.id,entry.value);
+    setNoteSlashState(null);
+    setNoteSlashIndex(0);
+    focusTextareaSelection(noteRef.current,entry.selectionStart,entry.selectionEnd);
+    requestAnimationFrame(function(){applyingNoteHistoryRef.current=false;});
+  }
+  function refreshNoteSlash(nextValue,nextCursor){
+    const nextSlash=getMarkdownSlashState(nextValue,nextCursor);
+    setNoteSlashState(nextSlash);
+    setNoteSlashIndex(0);
+  }
+  function applyNoteEdit(result){
+    if(!result||!noteRef.current)return;
+    syncNoteValue(result.value,result.selectionStart,result.selectionEnd);
+    setNoteSlashState(null);
+    setNoteSlashIndex(0);
+    focusTextareaSelection(noteRef.current,result.selectionStart,result.selectionEnd);
+  }
+  function applySlashCommand(cmd){
+    if(!noteRef.current)return;
+    const cursor=noteRef.current.selectionStart||0;
+    applyNoteEdit(cmd.apply(nval,cursor));
+  }
+  function handleNoteKeyDown(e){
+    const isMod=e.metaKey||e.ctrlKey;
+    if(isMod&&e.key.toLowerCase()==='z'){
+      e.preventDefault();
+      if(e.shiftKey){
+        if(noteHistoryIndexRef.current<noteHistoryRef.current.length-1)applyNoteHistory(noteHistoryIndexRef.current+1);
+      }else{
+        if(noteHistoryIndexRef.current>0)applyNoteHistory(noteHistoryIndexRef.current-1);
+      }
+      return;
+    }
+    if(isMod&&!e.shiftKey&&e.key.toLowerCase()==='y'){
+      e.preventDefault();
+      if(noteHistoryIndexRef.current<noteHistoryRef.current.length-1)applyNoteHistory(noteHistoryIndexRef.current+1);
+      return;
+    }
+    if(isMod&&!e.shiftKey){
+      var key=e.key.toLowerCase();
+      if(key==='b'||key==='i'||key==='e'){
+        e.preventDefault();
+        if(key==='b')applyNoteEdit(wrapSelectedText(nval,e.target.selectionStart,e.target.selectionEnd,'**','**','bold'));
+        if(key==='i')applyNoteEdit(wrapSelectedText(nval,e.target.selectionStart,e.target.selectionEnd,'*','*','italic'));
+        if(key==='e')applyNoteEdit(wrapSelectedText(nval,e.target.selectionStart,e.target.selectionEnd,'`','`','code'));
+        return;
+      }
+    }
+    if(noteSlashState){
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        setNoteSlashIndex(function(idx){return (idx+1)%noteSlashState.options.length;});
+        return;
+      }
+      if(e.key==='ArrowUp'){
+        e.preventDefault();
+        setNoteSlashIndex(function(idx){return (idx-1+noteSlashState.options.length)%noteSlashState.options.length;});
+        return;
+      }
+      if(e.key==='Enter'){
+        e.preventDefault();
+        applySlashCommand(noteSlashState.options[noteSlashIndex]);
+        return;
+      }
+      if(e.key==='Escape'){
+        e.preventDefault();
+        setNoteSlashState(null);
+        setNoteSlashIndex(0);
+      }
+    }
   }
   return h('div',{
     className:'tc '+(isSel?'sel ':'')+( todo.status==='done'?'done-c':'')+(isDragOver?' drag-over':''),
@@ -1219,10 +1482,40 @@ function TodoCard({todo,todos,agents,isSel,isExp,isDragOver,onSel,onToggle,onTog
         h('span',{className:'ntab '+(previewOnly?'':'on'),onClick:()=>setPreviewOnly(false)},'edit'),
         h('span',{className:'ntab '+(previewOnly?'on':''),onClick:()=>setPreviewOnly(true)},'preview')
       ),
+      !previewOnly&&h('div',{className:'md-shortcuts'},
+        h('span',null,'Shortcuts: Ctrl/Cmd+B bold, Ctrl/Cmd+I italic, Ctrl/Cmd+E code'),
+        h('span',null,'Type / for blocks')
+      ),
       h('div',{className:'nsplit'},
         !previewOnly&&h('div',{className:'nsplit-edit',style:{flex:1}},
           h('div',{className:'nsplit-label'},'markdown'),
-          h('textarea',{className:'med',value:nval,rows:6,placeholder:'Notes (markdown)\u2026',onChange:e=>{setNval(e.target.value);onUpdNote(todo.id,e.target.value);}})
+          h('textarea',{
+            ref:noteRef,
+            className:'med',
+            value:nval,
+            rows:6,
+            placeholder:'Notes (markdown)\u2026',
+            onChange:e=>{
+              syncNoteValue(e.target.value,e.target.selectionStart||0,e.target.selectionEnd||0);
+              refreshNoteSlash(e.target.value,e.target.selectionStart||0);
+            },
+            onClick:e=>refreshNoteSlash(e.target.value,e.target.selectionStart||0),
+            onKeyUp:e=>refreshNoteSlash(e.target.value,e.target.selectionStart||0),
+            onKeyDown:handleNoteKeyDown
+          }),
+          noteSlashState&&h('div',{className:'md-slash'},
+            noteSlashState.options.map(function(cmd,idx){
+              return h('button',{
+                key:cmd.id,
+                type:'button',
+                className:'md-slash-item '+(idx===noteSlashIndex?'on':''),
+                onMouseDown:function(ev){ev.preventDefault();applySlashCommand(cmd);}
+              },
+                h('span',null,cmd.label),
+                h('span',{className:'md-slash-k'},cmd.hint)
+              );
+            })
+          )
         ),
         previewOnly&&h('div',{className:'nsplit-prev',style:{flex:1}},
           h('div',{className:'nsplit-label'},'preview'),
@@ -1638,10 +1931,10 @@ function App(){
     next.forEach((tid,idx)=>{debounce('order_'+tid,()=>apiFetch('/todos/'+tid,{method:'PATCH',body:JSON.stringify({sortOrder:idx})}),600);});
   }
   function handleDragEndTodo(){setDragTodoId(null);setDragOverTodoId(null);}
-  async function createAgent({cli,model,reasoningEffort,workspace,prompt}){
+  async function createAgent({cli,model,reasoningEffort,workspace,writeWorkspaceMd,storeRecordsInWorkspace,prompt}){
     if(!selTodo)return;
     try{
-      const created=await apiFetch('/agents',{method:'POST',body:JSON.stringify({todoId:selTodo,cli,model,reasoningEffort:reasoningEffort||null,workspace:workspace||'',prompt:prompt||''})});
+      const created=await apiFetch('/agents',{method:'POST',body:JSON.stringify({todoId:selTodo,cli,model,reasoningEffort:reasoningEffort||null,workspace:workspace||'',writeWorkspaceMd:writeWorkspaceMd!==false,storeRecordsInWorkspace:storeRecordsInWorkspace!==false,prompt:prompt||''})});
       if(!created||!created.id)throw new Error('Agent creation returned an invalid response');
       setAgents(p=>{
         const prev=p[created.id]||{};

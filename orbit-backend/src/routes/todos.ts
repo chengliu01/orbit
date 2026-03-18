@@ -46,6 +46,8 @@ interface AgentRow {
   reasoning_effort: string | null;
   status: string;
   workspace: string;
+  write_workspace_md: number;
+  store_records_in_workspace: number;
   ctx_pct: number;
   tool_calls: number;
   claude_session_id: string | null;
@@ -101,6 +103,7 @@ async function syncWorkspaceMd(todoId: string, db: ReturnType<typeof getDb>): Pr
   const agents = db.prepare('SELECT * FROM agents WHERE todo_id = ? ORDER BY created_at ASC').all(todoId) as AgentRow[];
 
   await Promise.all(agents.map(async (agent) => {
+    if (agent.write_workspace_md !== 1) return;
     const existingFiles = await listWorkspaceFiles(agent.workspace);
     const wsMd = generateWorkspaceMd(
       { id: row.id, title: row.title, note: row.note, status: row.status, date: row.date, createdAt: row.created_at, subTodos },

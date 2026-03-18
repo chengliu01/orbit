@@ -27,5 +27,11 @@ export function runMigrations() {
     if (!agentColumns.some((column) => column.name === 'tokens_total')) {
         db.exec(`ALTER TABLE agents ADD COLUMN tokens_total INTEGER NOT NULL DEFAULT 0`);
     }
+    if (!agentColumns.some((column) => column.name === 'write_workspace_md')) {
+        db.exec(`ALTER TABLE agents ADD COLUMN write_workspace_md INTEGER NOT NULL DEFAULT 1`);
+    }
+    if (!agentColumns.some((column) => column.name === 'store_records_in_workspace')) {
+        db.exec(`ALTER TABLE agents ADD COLUMN store_records_in_workspace INTEGER NOT NULL DEFAULT 1`);
+    }
     console.log('[db] migrations applied');
 }

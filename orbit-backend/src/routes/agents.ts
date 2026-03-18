@@ -16,6 +16,8 @@ const CreateAgentSchema = z.object({
   model: z.string(),
   reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).nullable().optional(),
   workspace: z.string().default(''),
+  writeWorkspaceMd: z.boolean().default(true),
+  storeRecordsInWorkspace: z.boolean().default(true),
   prompt: z.string().default(''),
 });
 
@@ -48,6 +50,8 @@ interface AgentRow {
   reasoning_effort: string | null;
   status: string;
   workspace: string;
+  write_workspace_md: number;
+  store_records_in_workspace: number;
   ctx_pct: number;
   tokens_used: number;
   tokens_total: number;
@@ -87,6 +91,8 @@ function formatAgent(row: AgentRow, db: ReturnType<typeof getDb>) {
     reasoningEffort: row.reasoning_effort ?? undefined,
     status: row.status,
     workspace: row.workspace,
+    writeWorkspaceMd: row.write_workspace_md === 1,
+    storeRecordsInWorkspace: row.store_records_in_workspace === 1,
     ctxPct: row.ctx_pct,
     tokensUsed: row.tokens_used,
     tokensTotal: row.tokens_total,
@@ -192,9 +198,9 @@ export async function agentsRoutes(app: FastifyInstance): Promise<void> {
     const now = Date.now();
 
     db.prepare(`
-      INSERT INTO agents (id, todo_id, name, cli, model, reasoning_effort, status, workspace, ctx_pct, tokens_used, tokens_total, tool_calls, claude_session_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'idle', ?, 0, 0, 0, 0, NULL, ?)
-    `).run(id, body.todoId, name, body.cli, body.model, reasoningEffort, wsPath, now);
+      INSERT INTO agents (id, todo_id, name, cli, model, reasoning_effort, status, workspace, write_workspace_md, store_records_in_workspace, ctx_pct, tokens_used, tokens_total, tool_calls, claude_session_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'idle', ?, ?, ?, 0, 0, 0, 0, NULL, ?)
+    `).run(id, body.todoId, name, body.cli, body.model, reasoningEffort, wsPath, body.writeWorkspaceMd ? 1 : 0, body.storeRecordsInWorkspace ? 1 : 0, now);
 
     // Create agent folder
     await createAgentFolder(todo.date, todo.id, id);
@@ -205,12 +211,14 @@ export async function agentsRoutes(app: FastifyInstance): Promise<void> {
     const existingFiles = await listWorkspaceFiles(wsPath);
 
     // Generate WORKSPACE.md
-    const wsMd = generateWorkspaceMd(
-      { id: todo.id, title: todo.title, note: todo.note, status: todo.status, date: todo.date, createdAt: todo.created_at, subTodos },
-      { id },
-      existingFiles,
-    );
-    await fs.writeFile(join(wsPath, 'WORKSPACE.md'), wsMd, 'utf-8');
+    if (body.writeWorkspaceMd) {
+      const wsMd = generateWorkspaceMd(
+        { id: todo.id, title: todo.title, note: todo.note, status: todo.status, date: todo.date, createdAt: todo.created_at, subTodos },
+        { id },
+        existingFiles,
+      );
+      await fs.writeFile(join(wsPath, 'WORKSPACE.md'), wsMd, 'utf-8');
+    }
 
     const initTs = Date.now();
     db.prepare(`
@@ -223,9 +231,11 @@ export async function agentsRoutes(app: FastifyInstance): Promise<void> {
     `).run(
       nanoid(8),
       id,
-      body.cli === 'codex' && reasoningEffort
-        ? `WORKSPACE.md written · model: ${body.model} · reasoning: ${reasoningEffort}`
-        : `WORKSPACE.md written · model: ${body.model}`,
+      body.writeWorkspaceMd
+        ? (body.cli === 'codex' && reasoningEffort
+            ? `WORKSPACE.md written · model: ${body.model} · reasoning: ${reasoningEffort}`
+            : `WORKSPACE.md written · model: ${body.model}`)
+        : `Custom workspace connected · WORKSPACE.md disabled`,
       initTs + 1,
     );
 

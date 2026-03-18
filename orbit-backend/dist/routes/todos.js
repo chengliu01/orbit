@@ -65,6 +65,8 @@ async function syncWorkspaceMd(todoId, db) {
     const subTodos = db.prepare('SELECT id, title, status FROM todos WHERE parent_id = ? ORDER BY position ASC, created_at ASC').all(todoId);
     const agents = db.prepare('SELECT * FROM agents WHERE todo_id = ? ORDER BY created_at ASC').all(todoId);
     await Promise.all(agents.map(async (agent) => {
+        if (agent.write_workspace_md !== 1)
+            return;
         const existingFiles = await listWorkspaceFiles(agent.workspace);
         const wsMd = generateWorkspaceMd({ id: row.id, title: row.title, note: row.note, status: row.status, date: row.date, createdAt: row.created_at, subTodos }, { id: agent.id }, existingFiles);
         await fs.writeFile(join(agent.workspace, 'WORKSPACE.md'), wsMd, 'utf-8');
