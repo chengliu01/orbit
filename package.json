@@ -1,0 +1,41 @@
+{
+  "name": "orbit",
+  "version": "1.0.0",
+  "description": "Orbit — local AI task & agent workspace",
+  "main": "electron-main.js",
+  "scripts": {
+    "dev": "electron .",
+    "electron": "electron .",
+    "build:backend": "cd orbit-backend && npm run build",
+    "app": "npm run build:backend && electron .",
+    "pack": "npm run build:backend && electron-builder --dir",
+    "dist": "npm run build:backend && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.orbit.local",
+    "productName": "Orbit",
+    "files": [
+      "electron-main.js"
+    ],
+    "extraResources": [
+      { "from": "orbit.html", "to": "orbit.html" },
+      { "from": "models.json", "to": "models.json" },
+      { "from": "orbit-backend/dist", "to": "orbit-backend/dist" },
+      { "from": "orbit-backend/node_modules", "to": "orbit-backend/node_modules" },
+      { "from": "orbit-backend/package.json", "to": "orbit-backend/package.json" }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "directories": {
+      "output": "dist-app"
+    }
+  }
+}

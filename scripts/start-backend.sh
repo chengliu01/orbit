@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Share the same data as the Electron desktop app
+export DB_PATH="$HOME/Library/Application Support/Orbit/data/orbit.db"
+export WORKSPACE_ROOT="$HOME/orbit-workspace"
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
