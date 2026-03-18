@@ -1,0 +1,21 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^codex exec --json --full-auto --model=codex-mini-latest -C /tmp --skip-git-repo-check hello 2>&1 \\| head -30; echo \"exit: \\$\\?\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^codex exec --json --full-auto --skip-git-repo-check --model=codex-mini-latest -C /tmp hello 2>&1; echo \"exit: \\$\\?\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "codex": true,
+        "/^cd /Users/liucheng/Desktop/orbit/orbit-backend && node_modules/\\.bin/tsc --noEmit 2>&1 \\|\\| true$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node_modules/\\.bin/tsc --noEmit 2>&1; echo \"tsc exit: \\$\\?\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

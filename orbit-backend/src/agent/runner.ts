@@ -13,9 +13,12 @@ interface AgentRecord {
   todo_id: string;
   cli: string;
   model: string;
+  reasoning_effort: string | null;
   status: string;
   workspace: string;
   ctx_pct: number;
+  tokens_used: number;
+  tokens_total: number;
   tool_calls: number;
   claude_session_id: string | null;
   date?: string;
@@ -29,9 +32,23 @@ interface ActiveProcess {
   currentOutMsgId: string | null;
   // For tool_use: track pending tool use by id
   pendingTools: Map<string, string>; // toolUseId -> messageId
+  // Set to true when intentionally killed so handleExit skips status updates
+  killed: boolean;
+  // Model context window size (tokens); updated from event stream when available
+  contextWindow: number;
 }
 
 const processes = new Map<string, ActiveProcess>();
+
+/** Returns the known context window for a model, used as fallback before the
+ *  event stream provides a definitive value. */
+function getDefaultContextWindow(model: string): number {
+  if (/claude/.test(model)) return 200000;
+  if (/o[1-4][-_]|^o[1-4]$/.test(model)) return 200000;
+  if (/gpt-4o/.test(model)) return 128000;
+  if (/gpt-4-turbo/.test(model)) return 128000;
+  return 128000;
+}
 
 function buildCommand(agent: AgentRecord, prompt: string): { cmd: string; args: string[]; useStdin: boolean } {
   const workspacePath = resolveWorkspacePath(agent.workspace) || agent.workspace;
@@ -48,13 +65,30 @@ function buildCommand(agent: AgentRecord, prompt: string): { cmd: string; args: 
     }
     return { cmd: 'claude', args, useStdin: true };
   } else {
-    const args = [
-      'exec', '--json', '--full-auto',
-      `--model=${agent.model}`,
-      '-C', workspacePath,
-      prompt,
-    ];
-    return { cmd: 'codex', args, useStdin: false };
+    // `codex exec resume` does NOT support -C or --skip-git-repo-check;
+    // those flags are only valid for `codex exec` (new session).
+    if (agent.claude_session_id) {
+      const args = [
+        'exec', 'resume',
+        '--json', '--full-auto',
+        '--skip-git-repo-check',
+        `--model=${agent.model}`,
+        ...(agent.reasoning_effort ? ['--config', `model_reasoning_effort=${agent.reasoning_effort}`] : []),
+        agent.claude_session_id,
+        prompt,
+      ];
+      return { cmd: 'codex', args, useStdin: false };
+    } else {
+      const args = [
+        'exec', '--json', '--full-auto',
+        '--skip-git-repo-check',
+        `--model=${agent.model}`,
+        ...(agent.reasoning_effort ? ['--config', `model_reasoning_effort=${agent.reasoning_effort}`] : []),
+        '-C', workspacePath,
+        prompt,
+      ];
+      return { cmd: 'codex', args, useStdin: false };
+    }
   }
 }
 
@@ -105,21 +139,23 @@ function updateToolMessage(msgId: string, output: string, status: string): void 
     .run(output, status, msgId);
 }
 
-function updateAgentStatus(agentId: string, status: string, extra?: { ctxPct?: number; toolCalls?: number; sessionId?: string; endedAt?: number }): void {
+function updateAgentStatus(agentId: string, status: string, extra?: { ctxPct?: number; toolCalls?: number; sessionId?: string; endedAt?: number; tokensUsed?: number; tokensTotal?: number }): void {
   const db = getDb();
   const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId) as AgentRecord;
   if (!agent) return;
 
   const ctxPct = extra?.ctxPct ?? agent.ctx_pct;
+  const tokensUsed = extra?.tokensUsed ?? agent.tokens_used;
+  const tokensTotal = extra?.tokensTotal ?? agent.tokens_total;
   const toolCalls = extra?.toolCalls ?? agent.tool_calls;
   const sessionId = extra?.sessionId ?? agent.claude_session_id;
   const endedAt = extra?.endedAt ?? null;
 
   db.prepare(`
-    UPDATE agents SET status = ?, ctx_pct = ?, tool_calls = ?, claude_session_id = ?, ended_at = ? WHERE id = ?
-  `).run(status, ctxPct, toolCalls, sessionId, endedAt, agentId);
+    UPDATE agents SET status = ?, ctx_pct = ?, tokens_used = ?, tokens_total = ?, tool_calls = ?, claude_session_id = ?, ended_at = ? WHERE id = ?
+  `).run(status, ctxPct, tokensUsed, tokensTotal, toolCalls, sessionId, endedAt, agentId);
 
-  broadcastAll('agent:status', { agentId, status, ctxPct, toolCalls });
+  broadcastAll('agent:status', { agentId, status, ctxPct, tokensUsed, tokensTotal, toolCalls });
 }
 
 async function appendLog(logPath: string, obj: object): Promise<void> {
@@ -159,6 +195,10 @@ function handleJsonLine(active: ActiveProcess, line: string): void {
       });
 
     } else if (ev.kind === 'tool') {
+      // If item.started already registered this toolUseId, skip creating a duplicate
+      if (ev.toolUseId && active.pendingTools.has(ev.toolUseId)) {
+        continue;
+      }
       const msgId = saveMessage(agentId, 'tool', {
         tool_name: ev.tool,
         tool_input: ev.input,
@@ -238,10 +278,36 @@ function handleJsonLine(active: ActiveProcess, line: string): void {
     } else if (ev.kind === 'session_id' && ev.sessionId) {
       db.prepare('UPDATE agents SET claude_session_id = ? WHERE id = ?').run(ev.sessionId, agentId);
 
-    } else if (ev.kind === 'ctx_update' && ev.pct !== undefined) {
-      const freshAgent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId) as AgentRecord;
-      db.prepare('UPDATE agents SET ctx_pct = ? WHERE id = ?').run(ev.pct, agentId);
-      broadcastAll('agent:ctx', { agentId, ctxPct: ev.pct });
+    } else if (ev.kind === 'ctx_update') {
+      if (ev.contextWindow != null && ev.contextWindow > 0) {
+        active.contextWindow = ev.contextWindow;
+      }
+      if (ev.totalTokens != null) {
+        const tokensUsed = ev.tokensUsed ?? ev.totalTokens;
+        const tokensTotal = ev.tokensTotal ?? active.contextWindow;
+        const pct = tokensTotal > 0 ? Math.min(100, (tokensUsed / tokensTotal) * 100) : 0;
+        db.prepare('UPDATE agents SET ctx_pct = ?, tokens_used = ?, tokens_total = ? WHERE id = ?')
+          .run(pct, tokensUsed, tokensTotal, agentId);
+        broadcastAll('agent:ctx', {
+          agentId,
+          ctxPct: pct,
+          tokensUsed,
+          tokensTotal,
+        });
+      } else if (ev.contextWindow != null && ev.totalTokens == null) {
+        // task_started: just update the context window size, no token count yet
+        db.prepare('UPDATE agents SET tokens_total = ? WHERE id = ?').run(ev.contextWindow, agentId);
+        broadcastAll('agent:ctx', {
+          agentId,
+          ctxPct: null,
+          tokensUsed: null,
+          tokensTotal: ev.contextWindow,
+        });
+      } else if (ev.pct !== undefined) {
+        // legacy fallback
+        db.prepare('UPDATE agents SET ctx_pct = ? WHERE id = ?').run(ev.pct, agentId);
+        broadcastAll('agent:ctx', { agentId, ctxPct: ev.pct });
+      }
     }
   }
 }
@@ -263,6 +329,10 @@ function handleExit(active: ActiveProcess, code: number | null): void {
   db.prepare(`
     UPDATE messages SET tool_status = 'error' WHERE agent_id = ? AND kind = 'tool' AND tool_status = 'running'
   `).run(agentId);
+
+  // If process was intentionally killed (interrupt/cancel), skip status/sys-message updates
+  // so the caller's explicit status set is not overwritten.
+  if (active.killed) return;
 
   const status = (code === 0 || code === null) ? 'finished' : 'error';
   updateAgentStatus(agentId, status, { endedAt: Date.now() });
@@ -294,9 +364,23 @@ export function spawnAgent(agentId: string, prompt: string): void {
 
   const { cmd, args, useStdin } = buildCommand(agent, prompt);
 
+  // Log the exact CLI command being executed for debugging/auditing
+  const cmdLogPath = join(agentFolderPath(date, agent.todo_id, agentId), 'cmd.log');
+  const cmdLine = [cmd, ...args].map(a => (a.includes(' ') ? `"${a}"` : a)).join(' ');
+  const cmdLogEntry = `[${new Date().toISOString()}] ${cmdLine}\n`;
+  fs.appendFile(cmdLogPath, cmdLogEntry, 'utf-8').catch(() => {});
+
+  // Augment PATH so CLIs installed via homebrew/local are found regardless of
+  // how the Node process was started (e.g. from an IDE without a login shell).
+  const augmentedPath = [
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    process.env.PATH ?? '',
+  ].join(':');
+
   const proc = spawn(cmd, args, {
     cwd: workspacePath,
-    env: { ...process.env },
+    env: { ...process.env, PATH: augmentedPath },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -306,6 +390,8 @@ export function spawnAgent(agentId: string, prompt: string): void {
     logPath,
     currentOutMsgId: null,
     pendingTools: new Map(),
+    killed: false,
+    contextWindow: agent.tokens_total > 0 ? agent.tokens_total : getDefaultContextWindow(agent.model),
   };
 
   processes.set(agentId, active);
@@ -318,8 +404,37 @@ export function spawnAgent(agentId: string, prompt: string): void {
   const rl = readline.createInterface({ input: proc.stdout! });
   rl.on('line', (line) => handleJsonLine(active, line));
 
+  let stderrBuf = '';
   proc.stderr?.on('data', (chunk: Buffer) => {
-    appendLog(logPath, { stderr: chunk.toString(), ts: Date.now() });
+    const text = chunk.toString();
+    appendLog(logPath, { stderr: text, ts: Date.now() });
+    stderrBuf += text;
+    // Flush complete lines as sys messages so errors are visible in the chat
+    const lines = stderrBuf.split('\n');
+    stderrBuf = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const msgId = saveMessage(agentId, 'sys', { content: `[stderr] ${line}` });
+      broadcastAll('agent:message', { agentId, message: { id: msgId, kind: 'sys', content: `[stderr] ${line}`, ts: Date.now() } });
+    }
+  });
+  proc.stderr?.on('end', () => {
+    if (stderrBuf.trim()) {
+      const msgId = saveMessage(agentId, 'sys', { content: `[stderr] ${stderrBuf.trim()}` });
+      broadcastAll('agent:message', { agentId, message: { id: msgId, kind: 'sys', content: `[stderr] ${stderrBuf.trim()}`, ts: Date.now() } });
+    }
+  });
+
+  proc.on('error', (err) => {
+    active.killed = true; // prevent handleExit from double-reporting
+    processes.delete(agentId);
+    const msg = err.message.includes('ENOENT')
+      ? `CLI not found: '${cmd}'. Make sure it is installed and on PATH.`
+      : `Failed to start process: ${err.message}`;
+    console.error(`[runner] spawn error for agent ${agentId}:`, err.message);
+    const msgId = saveMessage(agentId, 'sys', { content: msg });
+    broadcastAll('agent:message', { agentId, message: { id: msgId, kind: 'sys', content: msg, ts: Date.now() } });
+    updateAgentStatus(agentId, 'error', { endedAt: Date.now() });
   });
 
   proc.on('exit', (code) => handleExit(active, code));
@@ -331,6 +446,7 @@ export function spawnAgent(agentId: string, prompt: string): void {
 export function killAgent(agentId: string): boolean {
   const active = processes.get(agentId);
   if (!active) return false;
+  active.killed = true;
   active.proc.kill('SIGTERM');
   processes.delete(agentId);
   return true;

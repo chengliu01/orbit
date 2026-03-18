@@ -11,6 +11,8 @@ export interface AgentStatusPayload {
   status: AgentStatus;
   ctxPct?: number;
   toolCalls?: number;
+  tokensUsed?: number;
+  tokensTotal?: number;
 }
 
 export interface AgentMessagePayload {

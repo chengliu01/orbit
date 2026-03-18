@@ -1,0 +1,40 @@
+{
+  "codex": {
+    "defaultModel": "gpt-5.4",
+    "defaultReasoningEffort": "medium",
+    "models": [
+      {
+        "id": "gpt-5.4",
+        "reasoningEfforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.3-codex",
+        "reasoningEfforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.2-codex",
+        "reasoningEfforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.2",
+        "reasoningEfforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.1-codex-max",
+        "reasoningEfforts": ["low", "medium", "high", "xhigh"]
+      },
+      {
+        "id": "gpt-5.1-codex-mini",
+        "reasoningEfforts": ["low", "medium", "high"]
+      }
+    ]
+  },
+  "claude-code": {
+    "defaultModel": "claude-sonnet-4-5",
+    "models": [
+      { "id": "claude-sonnet-4-5" },
+      { "id": "claude-opus-4-5" },
+      { "id": "claude-haiku-4-5" }
+    ]
+  }
+}

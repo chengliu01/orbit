@@ -7,16 +7,22 @@ import { createAgentFolder, agentFolderPath, todoFolderPath, listWorkspaceFiles,
 import { spawnAgent, killAgent } from '../agent/runner.js';
 import { generateWorkspaceMd } from '../agent/workspace-md.js';
 import { broadcastAll } from '../ws/handler.js';
+import { getCodexModelOption } from '../models-config.js';
 const CreateAgentSchema = z.object({
     todoId: z.string(),
     cli: z.enum(['codex', 'claude-code']),
     model: z.string(),
+    reasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).nullable().optional(),
     workspace: z.string().default(''),
     prompt: z.string().default(''),
 });
 const SendSchema = z.object({
     text: z.string(),
     attachmentIds: z.array(z.string()).default([]),
+});
+const UpdateAgentSchema = z.object({
+    name: z.string().min(1).optional(),
+    model: z.string().min(1).optional(),
 });
 function formatAgent(row, db) {
     return {
@@ -25,9 +31,12 @@ function formatAgent(row, db) {
         name: row.name,
         cli: row.cli,
         model: row.model,
+        reasoningEffort: row.reasoning_effort ?? undefined,
         status: row.status,
         workspace: row.workspace,
         ctxPct: row.ctx_pct,
+        tokensUsed: row.tokens_used,
+        tokensTotal: row.tokens_total,
         toolCalls: row.tool_calls,
         createdAt: row.created_at,
         endedAt: row.ended_at ?? undefined,
@@ -75,6 +84,23 @@ export async function agentsRoutes(app) {
             .all(id, parseInt(limit), parseInt(offset));
         return rows.map(formatMessage);
     });
+    // PATCH /api/agents/:id
+    app.patch('/api/agents/:id', async (req, reply) => {
+        const { id } = req.params;
+        const body = UpdateAgentSchema.parse(req.body);
+        const db = getDb();
+        const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        if (!agent)
+            return reply.code(404).send({ error: 'not found' });
+        if (body.name !== undefined) {
+            db.prepare('UPDATE agents SET name = ? WHERE id = ?').run(body.name, id);
+        }
+        if (body.model !== undefined) {
+            db.prepare('UPDATE agents SET model = ? WHERE id = ?').run(body.model, id);
+        }
+        const updated = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        return formatAgent(updated, db);
+    });
     // POST /api/agents — create + spawn
     app.post('/api/agents', async (req, reply) => {
         const body = CreateAgentSchema.parse(req.body);
@@ -84,6 +110,19 @@ export async function agentsRoutes(app) {
             return reply.code(404).send({ error: 'todo not found' });
         // Determine workspace
         const wsPath = resolveWorkspacePath(body.workspace) || todoFolderPath(todo.date, todo.id);
+        let reasoningEffort = null;
+        if (body.cli === 'codex') {
+            const modelOption = getCodexModelOption(body.model);
+            if (!modelOption)
+                return reply.code(400).send({ error: `unsupported codex model: ${body.model}` });
+            const allowed = modelOption.reasoningEfforts ?? [];
+            if (body.reasoningEffort) {
+                if (!allowed.includes(body.reasoningEffort)) {
+                    return reply.code(400).send({ error: `reasoning_effort '${body.reasoningEffort}' is not valid for '${body.model}'` });
+                }
+                reasoningEffort = body.reasoningEffort;
+            }
+        }
         // Name: cli-NNN
         const existingCount = db.prepare('SELECT COUNT(*) as cnt FROM agents WHERE todo_id = ?').get(body.todoId).cnt;
         const num = String(existingCount + 1).padStart(3, '0');
@@ -91,9 +130,9 @@ export async function agentsRoutes(app) {
         const id = 'ag' + nanoid(6);
         const now = Date.now();
         db.prepare(`
-      INSERT INTO agents (id, todo_id, name, cli, model, status, workspace, ctx_pct, tool_calls, claude_session_id, created_at)
-      VALUES (?, ?, ?, ?, ?, 'idle', ?, 0, 0, NULL, ?)
-    `).run(id, body.todoId, name, body.cli, body.model, wsPath, now);
+      INSERT INTO agents (id, todo_id, name, cli, model, reasoning_effort, status, workspace, ctx_pct, tokens_used, tokens_total, tool_calls, claude_session_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'idle', ?, 0, 0, 0, 0, NULL, ?)
+    `).run(id, body.todoId, name, body.cli, body.model, reasoningEffort, wsPath, now);
         // Create agent folder
         await createAgentFolder(todo.date, todo.id, id);
         await fs.mkdir(wsPath, { recursive: true });
@@ -111,7 +150,9 @@ export async function agentsRoutes(app) {
         db.prepare(`
       INSERT INTO messages (id, agent_id, kind, content, ts, is_streaming)
       VALUES (?, ?, 'sys', ?, ?, 0)
-    `).run(nanoid(8), id, `WORKSPACE.md written · model: ${body.model}`, initTs + 1);
+    `).run(nanoid(8), id, body.cli === 'codex' && reasoningEffort
+            ? `WORKSPACE.md written · model: ${body.model} · reasoning: ${reasoningEffort}`
+            : `WORKSPACE.md written · model: ${body.model}`, initTs + 1);
         // Spawn agent if prompt provided
         if (body.prompt) {
             spawnAgent(id, body.prompt);
@@ -130,6 +171,26 @@ export async function agentsRoutes(app) {
             return reply.code(404).send({ error: 'not found' });
         // Kill current process if running
         killAgent(id);
+        // For Codex: fetch conversation history BEFORE saving the new user message so we can
+        // inject it into the prompt (codex exec has no native session resumption that carries
+        // over the full context — history injection is the reliable fallback).
+        let conversationPrefix = '';
+        if (agent.cli === 'codex') {
+            const prevMsgs = db.prepare(`SELECT kind, content FROM messages WHERE agent_id = ? AND kind IN ('user','out') ORDER BY ts ASC`).all(id);
+            if (prevMsgs.length > 0) {
+                const lines = [
+                    '=== Previous conversation (for context) ===',
+                ];
+                for (const m of prevMsgs) {
+                    if (m.kind === 'user' && m.content)
+                        lines.push(`User: ${m.content}`);
+                    else if (m.kind === 'out' && m.content)
+                        lines.push(`Assistant: ${m.content}`);
+                }
+                lines.push('=== End of previous conversation ===', '');
+                conversationPrefix = lines.join('\n');
+            }
+        }
         // Build prompt with attachments
         let prompt = body.text;
         if (body.attachmentIds.length > 0) {
@@ -140,6 +201,10 @@ export async function agentsRoutes(app) {
             if (attachments.length > 0) {
                 prompt = `User attached files:\n${attachments.join('\n')}\n\n${body.text}`;
             }
+        }
+        // Prepend history for Codex
+        if (conversationPrefix) {
+            prompt = conversationPrefix + `User: ${prompt}`;
         }
         // Save user message
         const msgId = nanoid(8);
@@ -165,6 +230,28 @@ export async function agentsRoutes(app) {
         killAgent(id);
         db.prepare(`UPDATE agents SET status = 'idle', ended_at = ? WHERE id = ?`).run(Date.now(), id);
         broadcastAll('agent:status', { agentId: id, status: 'idle' });
+        return { ok: true };
+    });
+    // POST /api/agents/:id/cancel — interrupt and revert to message before last user input
+    app.post('/api/agents/:id/cancel', async (req, reply) => {
+        const { id } = req.params;
+        const db = getDb();
+        const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        if (!agent)
+            return reply.code(404).send({ error: 'not found' });
+        killAgent(id);
+        // Find the last user message and remove it plus everything produced after it
+        const lastUserMsg = db.prepare(`SELECT id, ts FROM messages WHERE agent_id = ? AND kind = 'user' ORDER BY ts DESC LIMIT 1`).get(id);
+        if (lastUserMsg) {
+            db.prepare(`DELETE FROM messages WHERE agent_id = ? AND ts >= ?`).run(id, lastUserMsg.ts);
+            db.prepare(`UPDATE agents SET status = 'idle' WHERE id = ?`).run(id);
+            broadcastAll('agent:cancelled', { agentId: id, revertToTs: lastUserMsg.ts });
+            broadcastAll('agent:status', { agentId: id, status: 'idle' });
+        }
+        else {
+            db.prepare(`UPDATE agents SET status = 'idle' WHERE id = ?`).run(id);
+            broadcastAll('agent:status', { agentId: id, status: 'idle' });
+        }
         return { ok: true };
     });
     // DELETE /api/agents/:id

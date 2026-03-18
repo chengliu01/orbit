@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS agents (
   status            TEXT NOT NULL DEFAULT 'idle',
   workspace         TEXT NOT NULL,
   ctx_pct           REAL NOT NULL DEFAULT 0,
+  tokens_used       INTEGER NOT NULL DEFAULT 0,
+  tokens_total      INTEGER NOT NULL DEFAULT 0,
   tool_calls        INTEGER NOT NULL DEFAULT 0,
   claude_session_id TEXT,
   created_at        INTEGER NOT NULL,

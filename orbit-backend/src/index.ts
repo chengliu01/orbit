@@ -3,8 +3,12 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocketPlugin from '@fastify/websocket';
 import multipart from '@fastify/multipart';
+import { promises as fs } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { runMigrations } from './db/client.js';
+import { loadModelsConfig } from './models-config.js';
 import { todosRoutes } from './routes/todos.js';
 import { agentsRoutes } from './routes/agents.js';
 import { attachmentsRoutes } from './routes/attachments.js';
@@ -12,6 +16,10 @@ import { workspaceRoutes } from './routes/workspace.js';
 import { addConnection, broadcastAll } from './ws/handler.js';
 import { resetStaleAgents } from './agent/runner.js';
 import { getDb } from './db/client.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// models.json lives at the project root (two levels up from src/)
+const MODELS_PATH = resolve(__dirname, '../../models.json');
 
 const app = Fastify({ logger: { level: 'info' } });
 
@@ -28,6 +36,11 @@ await todosRoutes(app);
 await agentsRoutes(app);
 await attachmentsRoutes(app);
 await workspaceRoutes(app);
+
+// GET /api/config/models — serve models.json so the UI can read it without restarting
+app.get('/api/config/models', async (_req, reply) => {
+  return reply.send(loadModelsConfig());
+});
 
 // WebSocket endpoint
 app.get('/ws', { websocket: true }, (socket, req) => {

@@ -1,9 +1,12 @@
+import { promises as fs } from 'fs';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { getDb } from '../db/client.js';
-import { createTodoFolder, deleteTodoFolder, writeTodoJson, todoFolderPath } from '../fs/layout.js';
+import { createTodoFolder, deleteTodoFolder, writeTodoJson, todoFolderPath, listWorkspaceFiles } from '../fs/layout.js';
 import { watchTodoWorkspace, stopWatcher } from '../fs/watcher.js';
 import { killAgent } from '../agent/runner.js';
+import { generateWorkspaceMd } from '../agent/workspace-md.js';
+import { join } from 'path';
 const CreateTodoSchema = z.object({
     date: z.string(),
     title: z.string().min(1),
@@ -46,6 +49,26 @@ function buildTodoJsonData(todoId, db) {
         createdAt: row.created_at,
         subTodos: subRows.map(s => ({ id: s.id, title: s.title, status: s.status })),
     };
+}
+async function syncTodoJson(todoId, db) {
+    const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(todoId);
+    if (!row)
+        return;
+    const jsonData = buildTodoJsonData(todoId, db);
+    if (jsonData)
+        await writeTodoJson(row.date, todoId, jsonData);
+}
+async function syncWorkspaceMd(todoId, db) {
+    const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(todoId);
+    if (!row)
+        return;
+    const subTodos = db.prepare('SELECT id, title, status FROM todos WHERE parent_id = ? ORDER BY position ASC, created_at ASC').all(todoId);
+    const agents = db.prepare('SELECT * FROM agents WHERE todo_id = ? ORDER BY created_at ASC').all(todoId);
+    await Promise.all(agents.map(async (agent) => {
+        const existingFiles = await listWorkspaceFiles(agent.workspace);
+        const wsMd = generateWorkspaceMd({ id: row.id, title: row.title, note: row.note, status: row.status, date: row.date, createdAt: row.created_at, subTodos }, { id: agent.id }, existingFiles);
+        await fs.writeFile(join(agent.workspace, 'WORKSPACE.md'), wsMd, 'utf-8');
+    }));
 }
 export async function todosRoutes(app) {
     // GET /api/todos?date=YYYY-MM-DD
@@ -105,6 +128,10 @@ export async function todosRoutes(app) {
                 if (parentJsonData)
                     await writeTodoJson(parent.date, body.parentId, parentJsonData);
             }
+            await syncWorkspaceMd(body.parentId, db);
+        }
+        else {
+            await syncWorkspaceMd(id, db);
         }
         // Start watching workspace
         const wsPath = todoFolderPath(body.date, id);
@@ -133,9 +160,10 @@ export async function todosRoutes(app) {
             db.prepare('UPDATE todos SET position = ?, updated_at = ? WHERE id = ?').run(body.position, now, id);
         // Update .todo.json
         const updated = db.prepare('SELECT * FROM todos WHERE id = ?').get(id);
-        const jsonData = buildTodoJsonData(id, db);
-        if (jsonData)
-            await writeTodoJson(updated.date, id, jsonData);
+        await syncTodoJson(id, db);
+        if (row.parent_id)
+            await syncTodoJson(row.parent_id, db);
+        await syncWorkspaceMd(row.parent_id ?? id, db);
         return formatTodo(updated, db);
     });
     // DELETE /api/todos/:id
@@ -145,6 +173,7 @@ export async function todosRoutes(app) {
         const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(id);
         if (!row)
             return reply.code(404).send({ error: 'not found' });
+        const parentId = row.parent_id;
         // Kill any running agents
         const agents = db.prepare('SELECT id, status FROM agents WHERE todo_id = ?').all(id);
         for (const ag of agents) {
@@ -155,6 +184,10 @@ export async function todosRoutes(app) {
         await stopWatcher(id);
         // Delete from DB (cascades)
         db.prepare('DELETE FROM todos WHERE id = ?').run(id);
+        if (parentId) {
+            await syncTodoJson(parentId, db);
+            await syncWorkspaceMd(parentId, db);
+        }
         // Delete workspace folder
         await deleteTodoFolder(row.date, id);
         return reply.code(204).send();

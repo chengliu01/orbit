@@ -6,6 +6,8 @@
 <title>Orbit</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -108,7 +110,11 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 .tbody{flex:1;min-width:0}
 .ttl{font-size:13px;font-weight:600;color:var(--t0);line-height:1.4}
 .ttl.dn{text-decoration:line-through;color:var(--t2)}
-.tnp{font-size:11px;color:var(--t2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}
+.tnp{font-size:11px;color:var(--t2);margin-top:4px;max-width:360px;max-height:42px;overflow:hidden}
+.tnp .md p,.tnp .md li,.tnp .md blockquote,.tnp .md .tki span:last-child{font-size:11px;color:var(--t2);line-height:1.45}
+.tnp .md h3,.tnp .md h4,.tnp .md h5{font-size:11px;margin:2px 0;color:var(--t1)}
+.tnp .md code{font-size:10px;padding:0 4px}
+.tnp .md .md-code,.tnp .md-math-block{margin:3px 0}
 .chips{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
 .chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:flex;align-items:center;gap:4px}
 .c-run{background:var(--acd);color:var(--ac);border:1px solid var(--acb)}
@@ -129,6 +135,11 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 .stl{font-size:12px;color:var(--t1);flex:1}
 .stl.dn{text-decoration:line-through;color:var(--t2)}
 .spulse{width:5px;height:5px;border-radius:50%;background:var(--ac);flex-shrink:0}
+.sub-edit{flex:1;background:transparent;border:none;outline:none;font-family:var(--sans);font-size:12px;color:var(--t0)}
+.sub-actions{display:flex;align-items:center;gap:2px;margin-left:auto}
+.sub-btn{width:22px;height:22px;border:none;border-radius:4px;background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:background .1s,color .1s}
+.sub-btn:hover{background:var(--bg4);color:var(--t1)}
+.sub-btn.del:hover{background:var(--red);color:var(--re)}
 .add-sub{display:flex;align-items:center;gap:5px;padding:5px 0;cursor:pointer;color:var(--t2);font-size:11px}
 .add-sub:hover{color:var(--t1)}
 .nsplit{border-top:1px solid var(--b0);display:flex}
@@ -138,6 +149,8 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 .med{width:100%;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:11px;color:var(--t1);resize:none;line-height:1.7;min-height:80px}
 .md p{margin:2px 0;font-size:12px;color:var(--t1);line-height:1.7}
 .md strong{color:var(--t0);font-weight:600}
+.md em{font-style:italic}
+.md s{text-decoration:line-through}
 .md code{font-family:var(--mono);font-size:11px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--ac)}
 .md blockquote{border-left:2px solid var(--acb);padding-left:9px;color:var(--t2);margin:3px 0;font-size:12px}
 .md h3,.md h4,.md h5{font-size:12px;font-weight:700;color:var(--t0);margin:7px 0 2px}
@@ -238,10 +251,15 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 /* sys block */
 .sys-block{display:flex;align-items:center;gap:6px}
 .sys-line{flex:1;height:1px;background:var(--b0)}
-.sys-txt{font-size:10px;color:var(--t3);white-space:nowrap;padding:0 6px}
+.sys-pill{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--b0);border-radius:999px;background:var(--bg2)}
+.sys-icon{width:16px;height:16px;border-radius:4px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:var(--t2)}
+.sys-txt{font-size:10px;color:var(--t3);white-space:nowrap}
 
 /* user message bubble */
 .user-msg{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.user-head{display:flex;align-items:center;gap:6px;padding-right:2px}
+.user-icon{width:18px;height:18px;border-radius:5px;background:var(--bg3);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:var(--t1)}
+.user-label{font-size:9px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
 .user-bubble{background:var(--bg3);border:1px solid var(--b1);border-radius:var(--rlg) var(--rlg) 3px var(--rlg);padding:8px 11px;max-width:85%}
 .user-bubble-text{font-size:12px;color:var(--t0);line-height:1.6;word-break:break-word}
 .user-bubble-img{margin-top:6px;border-radius:var(--rmd);overflow:hidden;max-width:220px;border:1px solid var(--b1)}
@@ -279,6 +297,8 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 .send-btn{padding:7px 13px;background:var(--ac);border:none;border-radius:var(--rlg);cursor:pointer;font-size:11px;font-weight:700;color:#0a0a0c;font-family:var(--sans);flex-shrink:0;transition:opacity .1s}
 .send-btn:hover{opacity:.85}
 .send-btn:disabled{opacity:.35;cursor:default}
+.cancel-btn{width:32px;height:32px;border-radius:50%;background:rgba(239,68,68,.12);border:1.5px solid rgba(239,68,68,.45);cursor:pointer;color:#ef4444;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,border-color .15s}
+.cancel-btn:hover{background:rgba(239,68,68,.25);border-color:#ef4444}
 .drop-hint{font-size:10px;color:var(--t2);text-align:center;padding:4px 0 6px;display:flex;align-items:center;justify-content:center;gap:4px}
 .composer.drag-over{border-color:var(--acb);box-shadow:inset 0 0 0 2px var(--acb)}
 
@@ -287,6 +307,7 @@ body.is-resizing,body.is-resizing *{cursor:col-resize!important;user-select:none
 .fbtn{font-size:10px;font-weight:600;padding:3px 8px;border:1px solid var(--b1);border-radius:var(--rsm);cursor:pointer;background:transparent;color:var(--t1);transition:background .1s,color .1s;font-family:var(--sans)}
 .fbtn:hover{background:var(--bg3);color:var(--t0)}
 .fbtn.d:hover{background:var(--red);color:var(--re);border-color:rgba(239,68,68,.3)}
+.fbtn[disabled]{opacity:.4;cursor:default}
 .fsp{flex:1}
 .nos{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--t2);gap:8px;padding:20px}
 .nos p{font-size:12px;text-align:center;line-height:1.6}
@@ -322,6 +343,46 @@ option{background:var(--bg3)}
 @keyframes rd{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 .cur{display:inline-block;width:7px;height:11px;background:var(--ac);border-radius:1px;animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:2px}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* token display */
+.ctx-tokens{font-size:9px;color:var(--t2);text-align:right;font-family:var(--mono);padding:1px 12px 4px}
+/* out block icon */
+.out-hdr{display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.out-icon{width:18px;height:18px;border-radius:5px;background:var(--acb);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ac);flex-shrink:0}
+.out-label{font-size:9px;font-weight:600;color:var(--ac);text-transform:uppercase;letter-spacing:.5px}
+/* md code block */
+.md-code{background:var(--bg3);border-radius:6px;padding:7px 10px;margin:5px 0;overflow-x:auto;border:1px solid var(--b0)}
+.md-code code{font-family:var(--mono);font-size:10px;color:var(--t1);white-space:pre;display:block;line-height:1.6}
+.md-math-block{margin:6px 0;overflow-x:auto}
+.md .katex-display{margin:.2em 0}
+.md .katex{font-size:1.05em}
+.math-inline,.math-block{font-family:var(--mono);color:var(--am)}
+/* mini calendar */
+.sb-cal{padding:4px 8px 8px}
+.cal-hdr{display:flex;align-items:center;gap:4px;margin-bottom:5px}
+.cal-nav{background:none;border:none;cursor:pointer;color:var(--t2);font-size:14px;padding:0 5px;border-radius:3px;line-height:1.6}
+.cal-nav:hover{background:var(--bg3);color:var(--t0)}
+.cal-month{font-size:10px;font-weight:600;color:var(--t1);flex:1;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.cal-dow{font-size:8px;color:var(--t3);text-align:center;padding:2px 0;font-weight:600;letter-spacing:.3px}
+.cal-cell{font-size:10px;color:var(--t3);text-align:center;padding:3px 1px;border-radius:3px;position:relative;line-height:1.6;cursor:default}
+.cal-cell.has-todos{color:var(--t1);cursor:pointer}
+.cal-cell.has-todos:hover{background:var(--bg3);color:var(--t0)}
+.cal-cell.is-today{color:var(--am);font-weight:700}
+.cal-cell.is-sel{background:var(--ac)!important;color:#0a0a0c!important;font-weight:700;border-radius:3px}
+.cal-dot{position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--ac);pointer-events:none}
+.cal-cell.is-sel .cal-dot{background:#0a0a0c}
+/* drag indicator */
+.tc.drag-over{border-color:var(--ac);border-top:2px solid var(--ac)}
+/* rename input in agent tab */
+.atab-rename{background:transparent;border:none;outline:none;font-size:11px;font-weight:600;color:var(--t0);font-family:var(--sans);width:90px;min-width:0}
+/* note edit/preview toggle */
+.nsplit-toggle{display:flex;gap:4px;padding:5px 8px 5px 37px;border-top:1px solid var(--b0);background:var(--bg1)}
+.ntab{font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;cursor:pointer;color:var(--t2);border:1px solid transparent;transition:all .1s}
+.ntab.on{background:var(--bg3);color:var(--t0);border-color:var(--b1)}
+.ntab:hover:not(.on){color:var(--t1)}
+/* model select in status bar */
+.smodel-sel{background:transparent;border:none;outline:none;color:var(--t2);font-size:10px;font-family:var(--mono);cursor:pointer;padding:0;max-width:120px}
+.smodel-sel option{background:var(--bg3);color:var(--t0)}
 </style>
 </head>
 <body>
@@ -330,12 +391,120 @@ option{background:var(--bg3)}
 (function(){
 const {createElement:h,useState,useEffect,useRef,useMemo,useCallback,Fragment}=React;
 const gid=()=>Math.random().toString(36).slice(2,8);
-const DEF_LEFT_W=200,DEF_RIGHT_W=340,MIN_LEFT_W=180,MAX_LEFT_W=360,MIN_RIGHT_W=260,MAX_RIGHT_W=520,MIN_CENTER_W=360,RESIZER_W=24;
+const DEF_LEFT_W=200,DEF_RIGHT_W=340,MIN_LEFT_W=130,MAX_LEFT_W=540,MIN_RIGHT_W=200,MAX_RIGHT_W=700,MIN_CENTER_W=260,RESIZER_W=24;
 function fmtTs(ts){return new Date(ts).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}
 function fmtAgo(ts){if(ts==null)return '-';const d=Date.now()-ts,m=Math.floor(d/60000),hh=Math.floor(d/3600000);if(m<1)return 'now';if(m<60)return m+'m';if(hh<24)return hh+'h';return Math.floor(hh/24)+'d'}
 function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function inMd(s){return escH(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/~~([^~]+)~~/g,'<s>$1</s>')}
-function renderMd(text){if(!text)return '';return text.split('\n').map(function(line){if(/^#{1,3} /.test(line)){var lv=line.match(/^#+/)[0].length;return '<h'+Math.min(lv+2,6)+'>'+inMd(line.replace(/^#+\s/,''))+'</h'+Math.min(lv+2,6)+'>';}if(line.startsWith('> '))return '<blockquote>'+inMd(line.slice(2))+'</blockquote>';var tkm=line.match(/^- \[([ x])\] (.+)/);if(tkm){var ck=tkm[1]==='x';return '<div class="tki '+(ck?'ck':'')+'"><span class="tkc">'+(ck?'&#10003;':'')+'</span><span>'+inMd(tkm[2])+'</span></div>';}if(/^[-*] /.test(line))return '<li>'+inMd(line.slice(2))+'</li>';if(line.trim()==='')return '<br/>';return '<p>'+inMd(line)+'</p>';}).join('');}
+function formatPlainInline(s){return escH(s).replace(/\\\$/g,'$').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/~~([^~]+)~~/g,'<s>$1</s>')}
+function renderMathExpression(expr,displayMode){
+  var source=(expr||'').trim();
+  if(!source)return '';
+  if(window.katex&&typeof window.katex.renderToString==='function'){
+    try{return window.katex.renderToString(source,{throwOnError:false,displayMode:!!displayMode});}
+    catch(e){}
+  }
+  return '<span class="'+(displayMode?'math-block':'math-inline')+'">'+escH(source)+'</span>';
+}
+function renderInlineMd(s){
+  var out=[],buf='',i=0;
+  function flush(){if(buf){out.push(formatPlainInline(buf));buf='';}}
+  while(i<s.length){
+    var ch=s[i];
+    if(ch==='`'){
+      var codeEnd=s.indexOf('`',i+1);
+      if(codeEnd!==-1){
+        flush();
+        out.push('<code>'+escH(s.slice(i+1,codeEnd))+'</code>');
+        i=codeEnd+1;
+        continue;
+      }
+    }
+    if(ch==='$'&&s[i-1]!=='\\'&&s[i+1]!=='$'){
+      var mathEnd=i+1;
+      while(mathEnd<s.length){
+        if(s[mathEnd]==='$'&&s[mathEnd-1]!=='\\')break;
+        mathEnd++;
+      }
+      if(mathEnd<s.length){
+        flush();
+        out.push(renderMathExpression(s.slice(i+1,mathEnd),false));
+        i=mathEnd+1;
+        continue;
+      }
+    }
+    buf+=ch;
+    i++;
+  }
+  flush();
+  return out.join('');
+}
+function renderMd(text){
+  if(!text)return '';
+  var lines=text.split('\n'),out=[],inCode=false,codeLines=[],inMath=false,mathLines=[];
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i],trimmed=line.trim();
+    if(line.startsWith('```')){
+      if(!inCode){inCode=true;codeLines=[];}
+      else{out.push('<div class="md-code"><code>'+(codeLines.map(escH).join('\n'))+'</code></div>');inCode=false;codeLines=[];}
+      continue;
+    }
+    if(inCode){codeLines.push(line);continue;}
+    if(inMath){
+      var closeIdx=line.lastIndexOf('$$');
+      if(closeIdx!==-1){
+        mathLines.push(line.slice(0,closeIdx));
+        out.push('<div class="md-math-block">'+renderMathExpression(mathLines.join('\n'),true)+'</div>');
+        inMath=false;
+        mathLines=[];
+      }else mathLines.push(line);
+      continue;
+    }
+    if(trimmed.startsWith('$$')){
+      if(trimmed.endsWith('$$')&&trimmed.length>4){
+        out.push('<div class="md-math-block">'+renderMathExpression(trimmed.slice(2,-2),true)+'</div>');
+      }else{
+        inMath=true;
+        var startIdx=line.indexOf('$$');
+        var afterStart=line.slice(startIdx+2);
+        if(afterStart)mathLines.push(afterStart);
+      }
+      continue;
+    }
+    if(/^#{1,3} /.test(line)){var lv=line.match(/^#+/)[0].length;out.push('<h'+Math.min(lv+2,5)+'>'+renderInlineMd(line.replace(/^#+\s/,''))+'</h'+Math.min(lv+2,5)+'>');}
+    else if(line.startsWith('> '))out.push('<blockquote>'+renderInlineMd(line.slice(2))+'</blockquote>');
+    else{
+      var tkm=line.match(/^- \[([ x])\] (.+)/);
+      if(tkm){var ck=tkm[1]==='x';out.push('<div class="tki '+(ck?'ck':'')+'"><span class="tkc">'+(ck?'&#10003;':'')+'</span><span>'+renderInlineMd(tkm[2])+'</span></div>');}
+      else if(/^[-*] /.test(line))out.push('<li>'+renderInlineMd(line.slice(2))+'</li>');
+      else if(/^\d+\. /.test(line))out.push('<li>'+renderInlineMd(line.replace(/^\d+\.\s+/,''))+'</li>');
+      else if(line.trim()==='')out.push('<br/>');
+      else out.push('<p>'+renderInlineMd(line)+'</p>');
+    }
+  }
+  if(inCode)out.push('<div class="md-code"><code>'+codeLines.map(escH).join('\n')+'</code></div>');
+  if(inMath)out.push('<div class="md-math-block">'+renderMathExpression(mathLines.join('\n'),true)+'</div>');
+  return out.join('');
+}
+function mergeDefined(base,patch){
+  var next={...(base||{})};
+  if(!patch)return next;
+  Object.keys(patch).forEach(function(key){
+    if(patch[key]!==undefined)next[key]=patch[key];
+  });
+  return next;
+}
+function mergeMessages(existing,incoming){
+  var byId={},ordered=[];
+  (existing||[]).forEach(function(msg){
+    byId[msg.id]=mergeDefined(byId[msg.id],msg);
+    if(!ordered.includes(msg.id))ordered.push(msg.id);
+  });
+  (incoming||[]).forEach(function(msg){
+    byId[msg.id]=mergeDefined(byId[msg.id],msg);
+    if(!ordered.includes(msg.id))ordered.push(msg.id);
+  });
+  return ordered.map(function(id){return byId[id];}).sort(function(a,b){return (a.ts||0)-(b.ts||0);});
+}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
 function readStoredNumber(key,fallback){try{var v=parseInt(localStorage.getItem(key)||'',10);return Number.isFinite(v)?v:fallback;}catch(e){return fallback;}}
 function readStoredValue(key,fallback){try{var v=localStorage.getItem(key);return v||fallback;}catch(e){return fallback;}}
@@ -438,7 +607,7 @@ function toolIcon(tool){
 
 // ── ToolBlock (merged tool+result) ──
 function ToolBlock({msg}){
-  const[open,setOpen]=useState(false);
+  const[open,setOpen]=useState(true);
   const ic=toolIcon(msg.tool);
   let arg={};
   try{arg=msg.input?JSON.parse(msg.input):{}}catch(e){arg={};}
@@ -493,14 +662,24 @@ function ThinkBlock({msg}){
 // ── ChatMessage ──
 function ChatMessage({msg}){
   if(msg.kind==='sys')return h('div',{className:'sys-block'},
-    h('div',{className:'sys-line'}),h('span',{className:'sys-txt'},msg.content),h('div',{className:'sys-line'})
+    h('div',{className:'sys-line'}),
+    h('div',{className:'sys-pill'},
+      h('div',{className:'sys-icon'},'i'),
+      h('span',{className:'sys-txt'},msg.content)
+    ),
+    h('div',{className:'sys-line'})
   );
   if(msg.kind==='think')return h(ThinkBlock,{msg});
   if(msg.kind==='tool')return h(ToolBlock,{msg});
   if(msg.kind==='out')return h('div',{className:'out-block'},
-    h('span',{className:'out-txt'},msg.content,msg.streaming&&h('span',{className:'cur'}))
+    h('div',{className:'out-hdr'},h('div',{className:'out-icon'},'✦'),h('span',{className:'out-label'},'response')),
+    h('div',{className:'out-txt'},h(MdView,{text:msg.content||''}),msg.streaming&&h('span',{className:'cur'}))
   );
   if(msg.kind==='user')return h('div',{className:'user-msg'},
+    h('div',{className:'user-head'},
+      h('span',{className:'user-label'},'you'),
+      h('div',{className:'user-icon'},'↗')
+    ),
     msg.attachments&&msg.attachments.map((att,i)=>
       att.type==='image'
         ?h('div',{key:i,className:'user-bubble'},h('div',{className:'user-bubble-img'},h('img',{src:att.dataUrl,alt:att.name})))
@@ -531,11 +710,32 @@ function RunGroup({messages,label}){
   )
 }
 
+function renderChatThread(messages){
+  const items=[];
+  let run=[];
+  function flushRun(){
+    if(!run.length)return;
+    items.push(h(RunGroup,{key:'run-'+run[0].id,messages:run}));
+    run=[];
+  }
+  (messages||[]).forEach(function(msg){
+    if(msg.kind==='tool'){
+      run.push(msg);
+      return;
+    }
+    flushRun();
+    items.push(h(ChatMessage,{key:msg.id,msg}));
+  });
+  flushRun();
+  return items;
+}
+
 // ── Composer ──
-function Composer({agentStatus,onSend}){
+function Composer({agentStatus,onSend,onCancel}){
   const[val,setVal]=useState('');
   const[attachments,setAttachments]=useState([]);
   const[dragging,setDragging]=useState(false);
+  const[isComposing,setIsComposing]=useState(false);
   const fileRef=useRef();
   const textRef=useRef();
   const canSend=agentStatus==='idle'||agentStatus==='running'||agentStatus==='finished'||agentStatus==='paused';
@@ -599,10 +799,24 @@ function Composer({agentStatus,onSend}){
         placeholder:disabled?'Agent unavailable\u2026':'Message agent\u2026 (paste images, drag & drop files)',
         value:val,rows:1,
         onChange:e=>setVal(e.target.value),
+        onCompositionStart:()=>setIsComposing(true),
+        onCompositionEnd:()=>setIsComposing(false),
         onPaste,
-        onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+        onKeyDown:e=>{
+          if(e.key==='Enter'&&!e.shiftKey){
+            if(e.nativeEvent&&e.nativeEvent.isComposing||isComposing||e.keyCode===229)return;
+            e.preventDefault();
+            send();
+          }
+        }
       }),
-      h('button',{className:'send-btn',disabled:disabled||(!val.trim()&&!attachments.length),onClick:send},'Send')
+      agentStatus==='running'
+        ?h('button',{className:'cancel-btn',onClick:onCancel,title:'Cancel and revert last message'},
+            h('svg',{width:12,height:12,viewBox:'0 0 24 24',fill:'currentColor'},
+              h('rect',{x:4,y:4,width:16,height:16,rx:2.5})
+            )
+          )
+        :h('button',{className:'send-btn',disabled:disabled||(!val.trim()&&!attachments.length),onClick:send},'Send')
     ),
     !disabled&&h('div',{className:'drop-hint'},
       h('svg',{width:10,height:10,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('path',{d:'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12'})),
@@ -612,13 +826,25 @@ function Composer({agentStatus,onSend}){
 }
 
 // ── AgentPanel ──
-function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInterrupt,width}){
+function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onRenameAgent,onChangeModel,modelMap,onSend,onInterrupt,onCancel,width}){
   const chatEnd=useRef(null);
+  const[renamingId,setRenamingId]=useState(null);
+  const[renameVal,setRenameVal]=useState('');
   const ag=agents[selAgId];
   useEffect(()=>{if(chatEnd.current)chatEnd.current.scrollIntoView({behavior:'smooth'});},[ag&&ag.messages&&ag.messages.length]);
+  useEffect(()=>{if(ag&&renamingId===ag.id)setRenameVal(ag.name||'');},[ag&&ag.id,ag&&ag.name,renamingId]);
 
   function handleSend({text,attachments}){
     if(onSend)onSend(selAgId,{text,attachments});
+  }
+  function startRename(agent){
+    setRenamingId(agent.id);
+    setRenameVal(agent.name||'');
+  }
+  function commitRename(agentId){
+    const next=(renameVal||'').trim();
+    if(next&&onRenameAgent)onRenameAgent(agentId,next);
+    setRenamingId(null);
   }
 
   if(!todo)return h('div',{className:'ap',style:{width:width+'px'}},
@@ -627,7 +853,8 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
   );
 
   const todoAgs=(todo.agentIds||[]).map(id=>agents[id]).filter(Boolean);
-  const ctxC=ag&&ag.ctxPct>80?'#ef4444':ag&&ag.ctxPct>60?'#f59e0b':'#3ecf8e';
+  const ctxPct=ag&&ag.tokensUsed!=null&&ag.tokensTotal>0?(ag.tokensUsed/ag.tokensTotal)*100:(ag&&typeof ag.ctxPct==='number'?ag.ctxPct:0);
+  const ctxC=ctxPct>80?'#ef4444':ctxPct>60?'#f59e0b':'#3ecf8e';
 
   return h('div',{className:'ap',style:{width:width+'px'}},
     // header
@@ -643,10 +870,22 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
     ),
     // tabs
     h('div',{className:'at-wrap'},
-      todoAgs.map(a=>h('div',{key:a.id,className:'atab '+(selAgId===a.id?'on':''),onClick:()=>onSelAg(a.id)},
-        h('span',{className:'td',style:{background:a.status==='running'?'#3ecf8e':a.status==='error'?'#ef4444':a.status==='paused'?'#f59e0b':'#2e2e44'}}),
-        a.name
-      )),
+      todoAgs.map(a=>{
+        const isRen=renamingId===a.id;
+        return h('div',{key:a.id,className:'atab '+(selAgId===a.id?'on':''),
+          onClick:()=>!isRen&&onSelAg(a.id),
+          onDoubleClick:()=>startRename(a)
+        },
+          h('span',{className:'td',style:{background:a.status==='running'?'#3ecf8e':a.status==='error'?'#ef4444':a.status==='paused'?'#f59e0b':'#2e2e44'}}),
+          isRen
+            ?h('input',{className:'atab-rename',value:renameVal,autoFocus:true,
+                onChange:e=>{e.stopPropagation();setRenameVal(e.target.value);},
+                onClick:e=>e.stopPropagation(),
+                onBlur:()=>commitRename(a.id),
+                onKeyDown:e=>{e.stopPropagation();if(e.key==='Enter')commitRename(a.id);if(e.key==='Escape')setRenamingId(null);}})
+            :a.name
+        );
+      }),
       h('div',{className:'atab-add',onClick:onNew},'\uFF0B')
     ),
     !ag?h('div',{className:'nos',style:{flex:1}},
@@ -658,15 +897,27 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
         h('span',{className:'sdot '+ag.status}),
         h('span',{className:'sname'},ag.name),
         ag.status==='running'&&h(RunDots),
-        h('span',{className:'smodel'},ag.model),
+        h('select',{className:'smodel smodel-sel',value:ag.model||'',
+          title:'Click to change model',
+          onChange:e=>onChangeModel&&onChangeModel(ag.id,e.target.value)},
+          (modelMap&&modelMap[ag.cli||'codex']&&modelMap[ag.cli||'codex'].models&&modelMap[ag.cli||'codex'].models.length
+            ?modelMap[ag.cli||'codex'].models
+            :[{id:ag.model||''}]
+          ).map(m=>h('option',{key:m.id,value:m.id},m.id))
+        ),
         h('span',{className:'astat'},ag.toolCalls,' calls \u00b7 ',fmtAgo(ag.createdAt))
       ),
       // context bar
       h('div',{className:'ctx-s'},
         h('div',{className:'ctx-r'},
           h('span',{className:'ctx-l'},'context'),
-          h('div',{className:'ctx-b'},h('div',{className:'ctx-f',style:{width:ag.ctxPct+'%',background:ctxC}})),
-          h('span',{className:'ctx-p'},Math.round(ag.ctxPct)+'%')
+          h('div',{className:'ctx-b'},h('div',{className:'ctx-f',style:{width:ctxPct+'%',background:ctxC}})),
+          h('span',{className:'ctx-p'},Math.round(ctxPct)+'%')
+        ),
+        h('div',{className:'ctx-tokens'},
+          ag.tokensUsed!=null
+            ?ag.tokensUsed.toLocaleString()+' / '+(ag.tokensTotal?ag.tokensTotal.toLocaleString():'?')+' tokens'
+            :ag.tokensTotal?'ctx window: '+ag.tokensTotal.toLocaleString():''
         )
       ),
       // workspace
@@ -677,11 +928,11 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
       ),
       // chat thread
       h('div',{className:'chat-thread'},
-        ag.messages.map(m=>h(ChatMessage,{key:m.id,msg:m})),
+        renderChatThread(ag.messages),
         h('div',{ref:chatEnd})
       ),
       // composer
-      h(Composer,{agentStatus:ag.status,onSend:handleSend}),
+      h(Composer,{agentStatus:ag.status,onSend:handleSend,onCancel:()=>onCancel&&onCancel(ag.id)}),
       // footer actions
       h('div',{className:'aftr'},
         ag.status==='running'&&h(Fragment,null,
@@ -694,6 +945,7 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
           h('button',{className:'fbtn'},'view diff')
         ),
         ag.status==='idle'&&h('button',{className:'fbtn',onClick:()=>onSend&&onSend(ag.id,{text:'continue',attachments:[]})},'resume'),
+        h('button',{className:'fbtn',onClick:()=>startRename(ag),disabled:renamingId===ag.id},'rename'),
         h('div',{className:'fsp'}),
         h('button',{className:'fbtn d',onClick:()=>onDelAgent(ag.id)},'delete')
       )
@@ -704,28 +956,64 @@ function AgentPanel({todo,agents,selAgId,onSelAg,onNew,onDelAgent,onSend,onInter
 // ── NewAgentModal ──
 function NewAgentModal({todo,onClose,onCreate}){
   const[cli,setCli]=useState('codex');
-  const[model,setModel]=useState('codex-mini-latest');
+  const[model,setModel]=useState('gpt-5.4');
+  const[reasoningEffort,setReasoningEffort]=useState('medium');
   const[ws,setWs]=useState('');
+  const[modelMap,setModelMap]=useState({
+    codex:{defaultModel:'gpt-5.4',defaultReasoningEffort:'medium',models:[{id:'gpt-5.4',reasoningEfforts:['low','medium','high','xhigh']}]},
+    'claude-code':{defaultModel:'claude-sonnet-4-5',models:[{id:'claude-sonnet-4-5'}]}
+  });
+  useEffect(()=>{
+    apiFetch('/config/models').then(m=>{
+      if(m&&m.codex&&m['claude-code']){
+        setModelMap(m);
+        setCli('codex');
+        setModel(m.codex.defaultModel||'gpt-5.4');
+        setReasoningEffort(m.codex.defaultReasoningEffort||'medium');
+      }
+    }).catch(()=>{});
+  },[]);
   const defWs='~/workspace/orbit/'+todo.date+'/todo_'+todo.id+'/';
-  const models=cli==='codex'
-    ? ['gpt-5.4','gpt-5.3-codex','gpt-5.3-codex-spark','gpt-5.1-codex-max','codex-mini-latest']
-    : ['claude-sonnet-4-5','claude-opus-4-5','claude-haiku-4-5'];
+  const cliConfig=modelMap[cli]||{defaultModel:'',models:[]};
+  const models=cliConfig.models||[];
+  const selectedModel=models.find(m=>m.id===model)||models[0]||null;
+  const reasoningOptions=selectedModel&&selectedModel.reasoningEfforts?selectedModel.reasoningEfforts:[];
   return h('div',{className:'ov',onClick:e=>{if(e.target===e.currentTarget)onClose();}},
     h('div',{className:'mod'},
       h('div',{className:'mod-t'},'New Agent'),
       h('div',{className:'mod-s'},'Launch an agent for: ',h('strong',{style:{color:'var(--t0)'}},todo.title)),
       h('div',{className:'fl'},
         h('label',null,'CLI Runtime'),
-        h('select',{className:'fsel',value:cli,onChange:e=>{setCli(e.target.value);setModel(e.target.value==='codex'?'codex-mini-latest':'claude-sonnet-4-5');}},
+        h('select',{className:'fsel',value:cli,onChange:e=>{
+          const v=e.target.value;
+          const nextConfig=modelMap[v]||{defaultModel:'',defaultReasoningEffort:'medium',models:[]};
+          setCli(v);
+          setModel(nextConfig.defaultModel||'');
+          setReasoningEffort(nextConfig.defaultReasoningEffort||'medium');
+        }},
           h('option',{value:'codex'},'Codex CLI'),
           h('option',{value:'claude-code'},'Claude Code')
         )
       ),
       h('div',{className:'fl'},
         h('label',null,'Model'),
-        h('select',{className:'fsel',value:model,onChange:e=>setModel(e.target.value)},
-          models.map(m=>h('option',{key:m,value:m},m))
+        h('select',{className:'fsel',value:model,onChange:e=>{
+          const nextModel=e.target.value;
+          const nextOption=models.find(m=>m.id===nextModel);
+          setModel(nextModel);
+          if(nextOption&&nextOption.reasoningEfforts&&nextOption.reasoningEfforts.length&&!nextOption.reasoningEfforts.includes(reasoningEffort)){
+            setReasoningEffort(nextOption.reasoningEfforts[0]);
+          }
+        }},
+          models.map(m=>h('option',{key:m.id,value:m.id},m.id))
         )
+      ),
+      cli==='codex'&&reasoningOptions.length>0&&h('div',{className:'fl'},
+        h('label',null,'Reasoning effort'),
+        h('select',{className:'fsel',value:reasoningEffort,onChange:e=>setReasoningEffort(e.target.value)},
+          reasoningOptions.map(level=>h('option',{key:level,value:level},level))
+        ),
+        h('div',{className:'fn'},'Available options depend on the selected Codex model')
       ),
       h('div',{className:'fl'},
         h('label',null,'Workspace folder ',h('span',{style:{color:'var(--t2)',fontWeight:400}},'(optional)')),
@@ -741,33 +1029,78 @@ function NewAgentModal({todo,onClose,onCreate}){
       ),
       h('div',{className:'mact'},
         h('button',{className:'btn btn-g',onClick:onClose},'Cancel'),
-        h('button',{className:'btn btn-p',onClick:()=>onCreate({cli,model,workspace:ws.trim(),prompt:''})},'Launch Agent')
+        h('button',{className:'btn btn-p',onClick:()=>onCreate({cli,model,reasoningEffort:cli==='codex'?reasoningEffort:null,workspace:ws.trim(),prompt:''})},'Launch Agent')
       )
     )
   )
 }
 
 // ── TodoCard ──
-function TodoCard({todo,todos,agents,isSel,isExp,onSel,onToggle,onToggleExp,onToggleSub,onAddSub,onDel,onUpdTitle,onUpdNote}){
+function TodoCard({todo,todos,agents,isSel,isExp,isDragOver,onSel,onToggle,onToggleExp,onToggleSub,onAddSub,onDel,onUpdTitle,onUpdNote,onUpdSubTitle,onDelSub,onDragStart,onDragOver,onDrop,onDragEnd}){
   const[editTitle,setEditTitle]=useState(false);
   const[tval,setTval]=useState(todo.title);
   const[nval,setNval]=useState(todo.note);
   const[confDel,setConfDel]=useState(false);
+  const[previewOnly,setPreviewOnly]=useState(false);
+  const[isAddingSub,setIsAddingSub]=useState(false);
+  const[subTitle,setSubTitle]=useState('');
+  const[editingSubId,setEditingSubId]=useState(null);
+  const[editingSubVal,setEditingSubVal]=useState('');
+  const[isTitleComposing,setIsTitleComposing]=useState(false);
+  const subInpRef=useRef(null);
   const children=(todo.children||[]).map(id=>todos[id]).filter(Boolean);
   const runAg=(todo.agentIds||[]).filter(id=>agents[id]&&agents[id].status==='running').length;
   const finAg=(todo.agentIds||[]).filter(id=>agents[id]&&agents[id].status==='finished').length;
   const doneCh=children.filter(c=>c.status==='done').length;
   const hasNote=todo.note&&todo.note.trim();
   const ckState=todo.status==='done'?'ck':children.length>0&&doneCh>0&&doneCh<children.length?'part':'';
-  function commitTitle(){setEditTitle(false);const v=tval.trim();if(v)onUpdTitle(todo.id,v);else setTval(todo.title);}
-  return h('div',{className:'tc '+(isSel?'sel ':'')+( todo.status==='done'?'done-c':'')},
-    h('div',{className:'tc-row',onClick:()=>onSel(todo.id)},
+  useEffect(()=>{setTval(todo.title);},[todo.title]);
+  useEffect(()=>{setNval(todo.note);},[todo.note]);
+  function commitTitle(){
+    const v=tval.trim();
+    if(!v){setTval(todo.title);setEditTitle(false);return;}
+    if(v===todo.title){setEditTitle(false);return;}
+    setEditTitle(false);
+    onUpdTitle(todo.id,v);
+  }
+  function commitSub(){if(subTitle.trim())onAddSub(todo.id,subTitle.trim());setIsAddingSub(false);setSubTitle('');}
+  function startAddSub(){setIsAddingSub(true);setSubTitle('');setTimeout(()=>subInpRef.current&&subInpRef.current.focus(),40);}
+  function startEditSub(ch){setEditingSubId(ch.id);setEditingSubVal(ch.title);}
+  function commitEditSub(subId){
+    const next=(editingSubVal||'').trim();
+    if(next&&onUpdSubTitle)onUpdSubTitle(subId,next);
+    setEditingSubId(null);
+    setEditingSubVal('');
+  }
+  return h('div',{
+    className:'tc '+(isSel?'sel ':'')+( todo.status==='done'?'done-c':'')+(isDragOver?' drag-over':''),
+    draggable:!todo.parentId,
+    onDragStart:e=>{e.dataTransfer.effectAllowed='move';onDragStart&&onDragStart(todo.id);},
+    onDragOver:e=>{e.preventDefault();onDragOver&&onDragOver(todo.id);},
+    onDrop:e=>{e.preventDefault();onDrop&&onDrop(todo.id);},
+    onDragEnd:()=>onDragEnd&&onDragEnd()
+  },
+    h('div',{className:'tc-row',onClick:()=>{onSel(todo.id);onToggleExp(todo.id);}},
       h('div',{className:'chk '+ckState,onClick:e=>{e.stopPropagation();onToggle(todo.id);}}),
       h('div',{className:'tbody'},
         editTitle
-          ?h('input',{className:'iedit',value:tval,autoFocus:true,onChange:e=>setTval(e.target.value),onBlur:commitTitle,onClick:e=>e.stopPropagation(),onKeyDown:e=>{if(e.key==='Enter')commitTitle();if(e.key==='Escape'){setEditTitle(false);setTval(todo.title);}}})
+          ?h('input',{
+            className:'iedit',
+            value:tval,
+            autoFocus:true,
+            onChange:e=>setTval(e.target.value),
+            onBlur:commitTitle,
+            onClick:e=>e.stopPropagation(),
+            onCompositionStart:()=>setIsTitleComposing(true),
+            onCompositionEnd:()=>setIsTitleComposing(false),
+            onKeyDown:e=>{
+              if(e.key==='Enter'&&(e.nativeEvent&&e.nativeEvent.isComposing||isTitleComposing||e.keyCode===229))return;
+              if(e.key==='Enter')commitTitle();
+              if(e.key==='Escape'){setEditTitle(false);setTval(todo.title);}
+            }
+          })
           :h('span',{className:'ttl '+(todo.status==='done'?'dn':''),onDoubleClick:e=>{e.stopPropagation();setEditTitle(true);}},todo.title),
-        !editTitle&&!isExp&&hasNote&&h('div',{className:'tnp'},todo.note.replace(/[#*`>\n]/g,' ').trim()),
+        !editTitle&&!isExp&&hasNote&&h('div',{className:'tnp'},h(MdView,{text:todo.note})),
         h('div',{className:'chips'},
           runAg>0&&h('span',{className:'chip c-run'},h(RunDots),' '+runAg+' running'),
           finAg>0&&!runAg&&h('span',{className:'chip c-fin'},'agent done'),
@@ -776,18 +1109,21 @@ function TodoCard({todo,todos,agents,isSel,isExp,onSel,onToggle,onToggleExp,onTo
         )
       ),
       h('div',{className:'tacts',onClick:e=>e.stopPropagation()},
-        (hasNote||children.length>0)&&h('button',{className:'ibtn',onClick:()=>onToggleExp(todo.id)},isExp?'\u2303':'\u2304'),
-        h('button',{className:'ibtn',title:'Edit note',onClick:()=>{if(!isExp)onToggleExp(todo.id);onSel(todo.id);}},'✎'),
+        h('button',{className:'ibtn',onClick:()=>onToggleExp(todo.id)},isExp?'\u2303':'\u2304'),
         h('button',{className:'ibtn del',onClick:()=>setConfDel(true)},'✕')
       )
     ),
     isExp&&h(Fragment,null,
+      h('div',{className:'nsplit-toggle'},
+        h('span',{className:'ntab '+(previewOnly?'':'on'),onClick:()=>setPreviewOnly(false)},'edit'),
+        h('span',{className:'ntab '+(previewOnly?'on':''),onClick:()=>setPreviewOnly(true)},'preview')
+      ),
       h('div',{className:'nsplit'},
-        h('div',{className:'nsplit-edit'},
+        !previewOnly&&h('div',{className:'nsplit-edit',style:{flex:1}},
           h('div',{className:'nsplit-label'},'markdown'),
           h('textarea',{className:'med',value:nval,rows:6,placeholder:'Notes (markdown)\u2026',onChange:e=>{setNval(e.target.value);onUpdNote(todo.id,e.target.value);}})
         ),
-        h('div',{className:'nsplit-prev'},
+        previewOnly&&h('div',{className:'nsplit-prev',style:{flex:1}},
           h('div',{className:'nsplit-label'},'preview'),
           h(MdView,{text:nval})
         )
@@ -796,10 +1132,30 @@ function TodoCard({todo,todos,agents,isSel,isExp,onSel,onToggle,onToggleExp,onTo
         h('div',{className:'subi'},
           children.map(ch=>h('div',{key:ch.id,className:'subr'},
             h('div',{className:'sch '+(ch.status==='done'?'ck':''),onClick:()=>onToggleSub(ch.id)}),
-            h('span',{className:'stl '+(ch.status==='done'?'dn':'')},ch.title),
-            (ch.agentIds||[]).some(id=>agents[id]&&agents[id].status==='running')&&h('span',{className:'spulse'})
+            editingSubId===ch.id
+              ?h('input',{className:'sub-edit',value:editingSubVal,autoFocus:true,
+                  onChange:e=>setEditingSubVal(e.target.value),
+                  onBlur:()=>commitEditSub(ch.id),
+                  onKeyDown:e=>{if(e.key==='Enter')commitEditSub(ch.id);if(e.key==='Escape'){setEditingSubId(null);setEditingSubVal('');}}})
+              :h('span',{className:'stl '+(ch.status==='done'?'dn':''),onDoubleClick:()=>startEditSub(ch)},ch.title),
+            (ch.agentIds||[]).some(id=>agents[id]&&agents[id].status==='running')&&h('span',{className:'spulse'}),
+            h('div',{className:'sub-actions'},
+              h('button',{className:'sub-btn',onClick:()=>startEditSub(ch),title:'Rename sub-todo'},'✎'),
+              h('button',{className:'sub-btn del',onClick:()=>onDelSub&&onDelSub(ch.id),title:'Delete sub-todo'},'✕')
+            )
           )),
-          h('div',{className:'add-sub',onClick:()=>onAddSub(todo.id)},h('span',{style:{fontSize:14,lineHeight:1}},'+'),' add sub-todo')
+          isAddingSub&&h('div',{className:'subr'},
+            h('div',{className:'sch'}),
+            h('input',{ref:subInpRef,
+              style:{flex:1,background:'transparent',border:'none',outline:'none',fontFamily:'var(--sans)',fontSize:12,color:'var(--t0)'},
+              placeholder:'Sub-todo title\u2026 (Enter to save, Esc to cancel)',
+              value:subTitle,
+              onChange:e=>setSubTitle(e.target.value),
+              onBlur:commitSub,
+              onKeyDown:e=>{if(e.key==='Enter')commitSub();if(e.key==='Escape'){setIsAddingSub(false);setSubTitle('');}}
+            })
+          ),
+          !isAddingSub&&h('div',{className:'add-sub',onClick:startAddSub},h('span',{style:{fontSize:14,lineHeight:1}},'+'),' add sub-todo')
         )
       )
     ),
@@ -873,7 +1229,8 @@ function Sidebar({todos,agents,dates,selDate,setSelDate,onSelectTodo,width}){
                 dt.length>0&&h('span',{className:'dprog'},dn+'/'+dt.length)
               )
             })
-          )
+          ),
+          h(MiniCalendar,{dates,selDate,onSelectDate:setSelDate})
         ),
     h('div',{className:'sb-bot'},
       h('div',{className:'wspath'},
@@ -882,6 +1239,44 @@ function Sidebar({todos,agents,dates,selDate,setSelDate,onSelectTodo,width}){
       )
     )
   )
+}
+
+// ── MiniCalendar ──
+function MiniCalendar({dates,selDate,onSelectDate}){
+  const today=new Date().toISOString().slice(0,10);
+  const[vy,setVy]=useState(()=>parseInt((selDate||today).slice(0,4)));
+  const[vm,setVm]=useState(()=>parseInt((selDate||today).slice(5,7))-1);
+  useEffect(()=>{
+    if(selDate){setVy(parseInt(selDate.slice(0,4)));setVm(parseInt(selDate.slice(5,7))-1);}
+  },[selDate]);
+  const todoDates=new Set(dates.map(d=>d.date));
+  const firstDow=new Date(vy,vm,1).getDay();
+  const dim=new Date(vy,vm+1,0).getDate();
+  const mname=new Date(vy,vm,1).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const cells=[];
+  for(let i=0;i<firstDow;i++)cells.push(null);
+  for(let d=1;d<=dim;d++)cells.push(d);
+  function prevM(){if(vm===0){setVy(y=>y-1);setVm(11);}else setVm(m=>m-1);}
+  function nextM(){if(vm===11){setVy(y=>y+1);setVm(0);}else setVm(m=>m+1);}
+  return h('div',{className:'sb-cal'},
+    h('div',{className:'cal-hdr'},
+      h('button',{className:'cal-nav',onClick:prevM},'‹'),
+      h('span',{className:'cal-month'},mname),
+      h('button',{className:'cal-nav',onClick:nextM},'›')
+    ),
+    h('div',{className:'cal-grid'},
+      ['S','M','T','W','T','F','S'].map((d,i)=>h('div',{key:i,className:'cal-dow'},d)),
+      cells.map((day,i)=>{
+        if(!day)return h('div',{key:'_'+i,className:'cal-cell'});
+        const ds=vy+'-'+String(vm+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+        const has=todoDates.has(ds),isTod=ds===today,isSel=ds===selDate;
+        return h('div',{key:ds,
+          className:'cal-cell'+(has?' has-todos':'')+(isTod?' is-today':'')+(isSel?' is-sel':''),
+          onClick:(has||isTod)?()=>onSelectDate(ds):undefined
+        },day,has&&!isSel&&h('div',{className:'cal-dot'}));
+      })
+    )
+  );
 }
 
 // ── App ──
@@ -900,6 +1295,10 @@ function App(){
   const[leftW,setLeftW]=useState(()=>readStoredNumber('orbit.leftWidth',DEF_LEFT_W));
   const[rightW,setRightW]=useState(()=>readStoredNumber('orbit.rightWidth',DEF_RIGHT_W));
   const[dragPane,setDragPane]=useState(null);
+  const[dragTodoId,setDragTodoId]=useState(null);
+  const[dragOverTodoId,setDragOverTodoId]=useState(null);
+  const[todoOrderMap,setTodoOrderMap]=useState({});
+  const[agentModelMap,setAgentModelMap]=useState({});
   const ntr=useRef();
   const appRef=useRef(null);
 
@@ -955,9 +1354,10 @@ function App(){
     };
   },[dragPane,leftW,rightW]);
 
-  // Load dates on mount
+  // Load dates on mount + model map
   useEffect(()=>{
     apiFetch('/workspace/dates').then(ds=>{if(ds)setDates(ds);}).catch(()=>{});
+    apiFetch('/config/models').then(m=>{if(m)setAgentModelMap(m);}).catch(()=>{});
   },[]);
 
   // Load todos when date changes
@@ -976,7 +1376,10 @@ function App(){
         for(const ag of(ags||[])){
           const full=await apiFetch('/agents/'+ag.id).catch(()=>null);
           if(full){
-            setAgents(p=>({...p,[full.id]:{...full,messages:full.messages||[]}}));
+            setAgents(p=>{
+              const prev=p[full.id]||{};
+              return {...p,[full.id]:mergeDefined(prev,{...full,messages:mergeMessages(prev.messages||[],full.messages||[])})};
+            });
           }
         }
       }
@@ -992,7 +1395,7 @@ function App(){
         const ag=p[agentId];if(!ag)return p;
         const msgs=[...(ag.messages||[])];
         const idx=msgs.findIndex(m=>m.id===message.id);
-        if(idx>=0){msgs[idx]={...msgs[idx],...message};}else{msgs.push(message);}
+        if(idx>=0){msgs[idx]=mergeDefined(msgs[idx],message);}else{msgs.push(message);}
         return {...p,[agentId]:{...ag,messages:msgs}};
       });
     }
@@ -1013,30 +1416,58 @@ function App(){
         return {...p,[agentId]:{...ag,messages:msgs}};
       });
     }
-    function onAgentStatus({agentId,status,ctxPct,toolCalls}){
+    function onAgentStatus({agentId,status,ctxPct,toolCalls,tokensUsed,tokensTotal}){
       setAgents(p=>{
         const ag=p[agentId];if(!ag)return p;
-        return {...p,[agentId]:{...ag,status,ctxPct:ctxPct!=null?ctxPct:ag.ctxPct,toolCalls:toolCalls!=null?toolCalls:ag.toolCalls}};
+        const upd={status,ctxPct:ctxPct!=null?ctxPct:ag.ctxPct,toolCalls:toolCalls!=null?toolCalls:ag.toolCalls};
+        if(tokensUsed!=null)upd.tokensUsed=tokensUsed;
+        if(tokensTotal!=null)upd.tokensTotal=tokensTotal;
+        return {...p,[agentId]:{...ag,...upd}};
       });
     }
-    function onAgentCtx({agentId,ctxPct}){
-      setAgents(p=>{const ag=p[agentId];if(!ag)return p;return {...p,[agentId]:{...ag,ctxPct}};});
+    function onAgentCtx({agentId,ctxPct,tokensUsed,tokensTotal}){
+      setAgents(p=>{
+        const ag=p[agentId];if(!ag)return p;
+        const upd={};
+        if(ctxPct!=null)upd.ctxPct=ctxPct;
+        if(tokensUsed!=null)upd.tokensUsed=tokensUsed;
+        if(tokensTotal!=null)upd.tokensTotal=tokensTotal;
+        return {...p,[agentId]:{...ag,...upd}};
+      });
+    }
+    function onAgentCancelled({agentId,revertToTs}){
+      setAgents(p=>{
+        const ag=p[agentId];if(!ag)return p;
+        const msgs=(ag.messages||[]).filter(m=>m.ts<revertToTs);
+        return {...p,[agentId]:{...ag,messages:msgs,status:'idle'}};
+      });
     }
     wsOn('agent:message',onAgentMessage);
     wsOn('agent:message:stream',onAgentStream);
     wsOn('agent:message:stream:end',onAgentStreamEnd);
     wsOn('agent:status',onAgentStatus);
     wsOn('agent:ctx',onAgentCtx);
+    wsOn('agent:cancelled',onAgentCancelled);
     return()=>{
       wsOff('agent:message',onAgentMessage);
       wsOff('agent:message:stream',onAgentStream);
       wsOff('agent:message:stream:end',onAgentStreamEnd);
       wsOff('agent:status',onAgentStatus);
       wsOff('agent:ctx',onAgentCtx);
+      wsOff('agent:cancelled',onAgentCancelled);
     };
   },[]);
 
-  const rootTodos=useMemo(()=>Object.values(todos).filter(t=>t.date===selDate&&!t.parentId).sort((a,b)=>a.createdAt-b.createdAt),[todos,selDate]);
+  const rootTodos=useMemo(()=>{
+    const base=Object.values(todos).filter(t=>t.date===selDate&&!t.parentId);
+    const order=todoOrderMap[selDate];
+    if(!order||!order.length)return base.sort((a,b)=>a.createdAt-b.createdAt);
+    const bmap={};base.forEach(t=>{bmap[t.id]=t;});
+    const ordered=[];
+    for(const id of order){if(bmap[id])ordered.push(bmap[id]);}
+    for(const t of base){if(!order.includes(t.id))ordered.push(t);}
+    return ordered;
+  },[todos,selDate,todoOrderMap]);
   const todo=todos[selTodo];
   const runCt=Object.values(agents).filter(a=>a.status==='running').length;
 
@@ -1049,8 +1480,8 @@ function App(){
     setTodos(p=>({...p,[id]:{...p[id],status:ns,completedAt:ns==='done'?Date.now():undefined}}));
     apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({status:ns})}).catch(()=>{});
   }
-  async function addSub(pid){
-    const title=prompt('Sub-todo title:');if(!title||!title.trim())return;
+  async function addSub(pid,title){
+    if(!title||!title.trim())return;
     const parent=todos[pid];if(!parent)return;
     const created=await apiFetch('/todos',{method:'POST',body:JSON.stringify({date:parent.date,title:title.trim(),note:'',parentId:pid})});
     if(created){
@@ -1074,12 +1505,40 @@ function App(){
     if(ag)setTodos(p=>{const t=p[ag.todoId];if(!t)return p;return {...p,[t.id]:{...t,agentIds:(t.agentIds||[]).filter(a=>a!==aid)}};});
     if(selAg===aid)setSelAg(null);
   }
-  async function createAgent({cli,model,workspace,prompt}){
+  function updSubTitle(id,title){
+    setTodos(p=>{if(!p[id])return p;return {...p,[id]:{...p[id],title}};});
+    apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({title})}).catch(()=>{});
+  }
+  function renameAgent(aid,name){
+    setAgents(p=>{const ag=p[aid];if(!ag)return p;return {...p,[aid]:{...ag,name}};});
+    apiFetch('/agents/'+aid,{method:'PATCH',body:JSON.stringify({name})}).catch(()=>{});
+  }
+  function changeAgentModel(aid,model){
+    setAgents(p=>{const ag=p[aid];if(!ag)return p;return {...p,[aid]:{...ag,model}};});
+    apiFetch('/agents/'+aid,{method:'PATCH',body:JSON.stringify({model})}).catch(()=>{});
+  }
+  function handleDragStart(id){setDragTodoId(id);}
+  function handleDragOverTodo(id){setDragOverTodoId(id);}
+  function handleDropTodo(id){
+    if(!dragTodoId||dragTodoId===id){setDragTodoId(null);setDragOverTodoId(null);return;}
+    const base=rootTodos.map(t=>t.id);
+    const fi=base.indexOf(dragTodoId),ti=base.indexOf(id);
+    if(fi<0||ti<0){setDragTodoId(null);setDragOverTodoId(null);return;}
+    const next=[...base];next.splice(fi,1);next.splice(ti,0,dragTodoId);
+    setTodoOrderMap(p=>({...p,[selDate]:next}));
+    setDragTodoId(null);setDragOverTodoId(null);
+    next.forEach((tid,idx)=>{debounce('order_'+tid,()=>apiFetch('/todos/'+tid,{method:'PATCH',body:JSON.stringify({sortOrder:idx})}),600);});
+  }
+  function handleDragEndTodo(){setDragTodoId(null);setDragOverTodoId(null);}
+  async function createAgent({cli,model,reasoningEffort,workspace,prompt}){
     if(!selTodo)return;
     try{
-      const created=await apiFetch('/agents',{method:'POST',body:JSON.stringify({todoId:selTodo,cli,model,workspace:workspace||'',prompt:prompt||''})});
+      const created=await apiFetch('/agents',{method:'POST',body:JSON.stringify({todoId:selTodo,cli,model,reasoningEffort:reasoningEffort||null,workspace:workspace||'',prompt:prompt||''})});
       if(!created||!created.id)throw new Error('Agent creation returned an invalid response');
-      setAgents(p=>({...p,[created.id]:{...created,messages:created.messages||[]}}));
+      setAgents(p=>{
+        const prev=p[created.id]||{};
+        return {...p,[created.id]:mergeDefined(prev,{...created,messages:mergeMessages(prev.messages||[],created.messages||[])})};
+      });
       setTodos(p=>({...p,[selTodo]:{...p[selTodo],agentIds:[...(p[selTodo].agentIds||[]),created.id]}}));
       setSelAg(created.id);setNewAg(false);
     }catch(err){
@@ -1093,8 +1552,18 @@ function App(){
     setNewTitle('');setAddingTodo(false);
     apiFetch('/workspace/dates').then(ds=>{if(ds)setDates(ds);}).catch(()=>{});
   }
-  function onUpdTitle(id,v){debounce('title_'+id,()=>apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({title:v})}),500);}
-  function onUpdNote(id,v){debounce('note_'+id,()=>apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({note:v})}),500);}
+  function onUpdTitle(id,v){
+    setTodos(p=>{if(!p[id])return p;return {...p,[id]:{...p[id],title:v}};});
+    debounce('title_'+id,async ()=>{
+      try{
+        await apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({title:v})});
+      }catch(_err){}
+    },500);
+  }
+  function onUpdNote(id,v){
+    setTodos(p=>{if(!p[id])return p;return {...p,[id]:{...p[id],note:v}};});
+    debounce('note_'+id,()=>apiFetch('/todos/'+id,{method:'PATCH',body:JSON.stringify({note:v})}),500);
+  }
 
   async function handleSend(agentId,{text,attachments}){
     try{
@@ -1120,10 +1589,18 @@ function App(){
       alert('Failed to interrupt agent: '+(err&&err.message?err.message:'unknown error'));
     }
   }
+  async function handleCancel(agentId){
+    try{
+      await apiFetch('/agents/'+agentId+'/cancel',{method:'POST',body:JSON.stringify({})});
+    }catch(err){
+      alert('Failed to cancel: '+(err&&err.message?err.message:'unknown error'));
+    }
+  }
 
   function fmtDateHdr(d){
     try{const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});}catch(e){return d;}
   }
+  const todayStr=new Date().toISOString().slice(0,10);
 
   return h('div',{className:'app',ref:appRef},
     h(Sidebar,{todos,agents,dates,selDate,setSelDate,onSelectTodo:selTodoFn,width:leftW}),
@@ -1132,11 +1609,12 @@ function App(){
       h('div',{className:'mc-hdr'},
         h('div',{className:'mc-date'},fmtDateHdr(selDate)),
         h('div',{className:'mc-meta'},rootTodos.length,' todos',runCt>0&&h(Fragment,null,' \u00b7 ',h('em',null,runCt,' running'))),
+        selDate!==todayStr&&h('button',{className:'hbtn',onClick:()=>setSelDate(todayStr),title:'Go to today'},'\u2190 Today'),
         h('button',{className:'hbtn ghost',onClick:()=>setTheme(p=>p==='dark'?'light':'dark')},theme==='dark'?'light':'dark'),
         !addingTodo&&h('button',{className:'hbtn pri',onClick:()=>{setAddingTodo(true);setTimeout(()=>ntr.current&&ntr.current.focus(),40);}},'+ New todo')
       ),
       h('div',{className:'tl'},
-        rootTodos.map(t=>h(TodoCard,{key:t.id,todo:t,todos,agents,isSel:selTodo===t.id,isExp:expIds.has(t.id),onSel:selTodoFn,onToggle:togTodo,onToggleExp:togExp,onToggleSub:togTodo,onAddSub:addSub,onDel:delTodo,onUpdTitle,onUpdNote})),
+        rootTodos.map(t=>h(TodoCard,{key:t.id,todo:t,todos,agents,isSel:selTodo===t.id,isExp:expIds.has(t.id),isDragOver:dragOverTodoId===t.id,onSel:selTodoFn,onToggle:togTodo,onToggleExp:togExp,onToggleSub:togTodo,onAddSub:addSub,onDel:delTodo,onUpdTitle,onUpdNote,onUpdSubTitle:updSubTitle,onDelSub:delTodo,onDragStart:handleDragStart,onDragOver:handleDragOverTodo,onDrop:handleDropTodo,onDragEnd:handleDragEndTodo})),
         addingTodo
           ?h('div',{className:'new-ti'},h('div',{className:'chk'}),h('input',{ref:ntr,className:'iedit',placeholder:'Todo title\u2026 (Enter to save, Esc to cancel)',value:newTitle,onChange:e=>setNewTitle(e.target.value),onBlur:addTodo,onKeyDown:e=>{if(e.key==='Enter')addTodo();if(e.key==='Escape'){setAddingTodo(false);setNewTitle('');}}})
 )
@@ -1144,7 +1622,7 @@ function App(){
       )
     ),
     h('div',{className:'pane-resizer '+(dragPane==='right'?'on':''),onPointerDown:e=>{e.preventDefault();setDragPane('right');},title:'Drag to resize right panel'}),
-    h(AgentPanel,{todo:todo||null,agents,selAgId:selAg,onSelAg:setSelAg,onNew:()=>setNewAg(true),onDelAgent:delAgent,onSend:handleSend,onInterrupt:handleInterrupt,width:rightW}),
+    h(AgentPanel,{todo:todo||null,agents,selAgId:selAg,onSelAg:setSelAg,onNew:()=>setNewAg(true),onDelAgent:delAgent,onRenameAgent:renameAgent,onChangeModel:changeAgentModel,modelMap:agentModelMap,onSend:handleSend,onInterrupt:handleInterrupt,onCancel:handleCancel,width:rightW}),
     newAg&&todo&&h(NewAgentModal,{todo,onClose:()=>setNewAg(false),onCreate:createAgent})
   )
 }

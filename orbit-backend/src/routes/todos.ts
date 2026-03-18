@@ -1,10 +1,12 @@
+import { promises as fs } from 'fs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { getDb } from '../db/client.js';
-import { createTodoFolder, deleteTodoFolder, writeTodoJson, todoFolderPath } from '../fs/layout.js';
+import { createTodoFolder, deleteTodoFolder, writeTodoJson, todoFolderPath, listWorkspaceFiles } from '../fs/layout.js';
 import { watchTodoWorkspace, stopWatcher } from '../fs/watcher.js';
 import { killAgent } from '../agent/runner.js';
+import { generateWorkspaceMd } from '../agent/workspace-md.js';
 import { config } from '../config.js';
 import { join } from 'path';
 
@@ -41,7 +43,15 @@ interface AgentRow {
   name: string;
   cli: string;
   model: string;
+  reasoning_effort: string | null;
   status: string;
+  workspace: string;
+  ctx_pct: number;
+  tool_calls: number;
+  claude_session_id: string | null;
+  created_at: number;
+  ended_at: number | null;
+  error_msg: string | null;
 }
 
 function formatTodo(row: TodoRow, db: ReturnType<typeof getDb>) {
@@ -74,6 +84,31 @@ function buildTodoJsonData(todoId: string, db: ReturnType<typeof getDb>) {
     createdAt: row.created_at,
     subTodos: subRows.map(s => ({ id: s.id, title: s.title, status: s.status })),
   };
+}
+
+async function syncTodoJson(todoId: string, db: ReturnType<typeof getDb>): Promise<void> {
+  const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(todoId) as TodoRow | undefined;
+  if (!row) return;
+  const jsonData = buildTodoJsonData(todoId, db);
+  if (jsonData) await writeTodoJson(row.date, todoId, jsonData);
+}
+
+async function syncWorkspaceMd(todoId: string, db: ReturnType<typeof getDb>): Promise<void> {
+  const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(todoId) as TodoRow | undefined;
+  if (!row) return;
+
+  const subTodos = (db.prepare('SELECT id, title, status FROM todos WHERE parent_id = ? ORDER BY position ASC, created_at ASC').all(todoId) as { id: string; title: string; status: string }[]);
+  const agents = db.prepare('SELECT * FROM agents WHERE todo_id = ? ORDER BY created_at ASC').all(todoId) as AgentRow[];
+
+  await Promise.all(agents.map(async (agent) => {
+    const existingFiles = await listWorkspaceFiles(agent.workspace);
+    const wsMd = generateWorkspaceMd(
+      { id: row.id, title: row.title, note: row.note, status: row.status, date: row.date, createdAt: row.created_at, subTodos },
+      { id: agent.id },
+      existingFiles,
+    );
+    await fs.writeFile(join(agent.workspace, 'WORKSPACE.md'), wsMd, 'utf-8');
+  }));
 }
 
 export async function todosRoutes(app: FastifyInstance): Promise<void> {
@@ -137,6 +172,9 @@ export async function todosRoutes(app: FastifyInstance): Promise<void> {
         const parentJsonData = buildTodoJsonData(body.parentId, db);
         if (parentJsonData) await writeTodoJson(parent.date, body.parentId, parentJsonData);
       }
+      await syncWorkspaceMd(body.parentId, db);
+    } else {
+      await syncWorkspaceMd(id, db);
     }
 
     // Start watching workspace
@@ -167,8 +205,9 @@ export async function todosRoutes(app: FastifyInstance): Promise<void> {
 
     // Update .todo.json
     const updated = db.prepare('SELECT * FROM todos WHERE id = ?').get(id) as TodoRow;
-    const jsonData = buildTodoJsonData(id, db);
-    if (jsonData) await writeTodoJson(updated.date, id, jsonData);
+    await syncTodoJson(id, db);
+    if (row.parent_id) await syncTodoJson(row.parent_id, db);
+    await syncWorkspaceMd(row.parent_id ?? id, db);
 
     return formatTodo(updated, db);
   });
@@ -179,6 +218,7 @@ export async function todosRoutes(app: FastifyInstance): Promise<void> {
     const db = getDb();
     const row = db.prepare('SELECT * FROM todos WHERE id = ?').get(id) as TodoRow | undefined;
     if (!row) return reply.code(404).send({ error: 'not found' });
+    const parentId = row.parent_id;
 
     // Kill any running agents
     const agents = db.prepare('SELECT id, status FROM agents WHERE todo_id = ?').all(id) as AgentRow[];
@@ -191,6 +231,11 @@ export async function todosRoutes(app: FastifyInstance): Promise<void> {
 
     // Delete from DB (cascades)
     db.prepare('DELETE FROM todos WHERE id = ?').run(id);
+
+    if (parentId) {
+      await syncTodoJson(parentId, db);
+      await syncWorkspaceMd(parentId, db);
+    }
 
     // Delete workspace folder
     await deleteTodoFolder(row.date, id);
