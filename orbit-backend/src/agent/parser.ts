@@ -229,9 +229,15 @@ export function parseCodexEvent(raw: string): ParsedEvent[] {
 
   // turn.completed → update context usage
   if (type === 'turn.completed') {
-    const usage = event.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+    const usage = event.usage as {
+      input_tokens?: number;
+      output_tokens?: number;
+      cached_input_tokens?: number;
+      cache_creation_input_tokens?: number;
+    } | undefined;
     if (usage) {
-      const totalTokens = (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0);
+      const uncachedInputTokens = Math.max(0, (usage.input_tokens ?? 0) - (usage.cached_input_tokens ?? 0));
+      const totalTokens = uncachedInputTokens + (usage.cache_creation_input_tokens ?? 0) + (usage.output_tokens ?? 0);
       return [{ kind: 'ctx_update', totalTokens }];
     }
     return [];

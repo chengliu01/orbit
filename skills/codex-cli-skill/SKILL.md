@@ -1,5 +1,5 @@
 ---
-name: codex-cli
+name: codex-cli-skill
 description: >
   Complete reference and usage guide for the OpenAI Codex CLI tool. Use this skill
   whenever the user asks about: running codex commands, codex CLI flags or options,

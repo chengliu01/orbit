@@ -1,5 +1,5 @@
 ---
-name: claude-code
+name: claude-code-cli-skill
 description: >
   Complete reference and usage guide for Claude Code — Anthropic's agentic CLI coding
   assistant. Use this skill whenever the user asks about: installing or configuring

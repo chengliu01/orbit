@@ -2,12 +2,14 @@ import { spawn } from 'child_process';
 import * as readline from 'readline';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import { nanoid } from 'nanoid';
 import { getDb } from '../db/client.js';
 import { broadcastAll } from '../ws/handler.js';
 import { parseClaudeEvent, parseCodexEvent } from './parser.js';
 import { agentFolderPath, resolveWorkspacePath } from '../fs/layout.js';
 const processes = new Map();
+const CODEX_SESSIONS_ROOT = join(homedir(), '.codex', 'sessions');
 /** Returns the known context window for a model, used as fallback before the
  *  event stream provides a definitive value. */
 function getDefaultContextWindow(model) {
@@ -114,6 +116,68 @@ async function appendLog(logPath, obj) {
     catch {
         // ignore
     }
+}
+async function findCodexSessionFile(sessionId, dir = CODEX_SESSIONS_ROOT) {
+    let entries;
+    try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+    }
+    catch {
+        return null;
+    }
+    for (const entry of entries) {
+        const entryName = String(entry.name);
+        const fullPath = join(dir, entryName);
+        if (entry.isDirectory()) {
+            const nested = await findCodexSessionFile(sessionId, fullPath);
+            if (nested)
+                return nested;
+            continue;
+        }
+        if (entry.isFile() && entryName.endsWith('.jsonl') && entryName.includes(sessionId)) {
+            return fullPath;
+        }
+    }
+    return null;
+}
+async function readLatestCodexContext(sessionId) {
+    const sessionFile = await findCodexSessionFile(sessionId);
+    if (!sessionFile)
+        return null;
+    let raw;
+    try {
+        raw = await fs.readFile(sessionFile, 'utf-8');
+    }
+    catch {
+        return null;
+    }
+    let tokensUsed = null;
+    let tokensTotal = 0;
+    for (const line of raw.split('\n')) {
+        if (!line.trim())
+            continue;
+        const events = parseCodexEvent(line);
+        for (const ev of events) {
+            if (ev.kind !== 'ctx_update')
+                continue;
+            if (ev.contextWindow != null && ev.contextWindow > 0) {
+                tokensTotal = ev.contextWindow;
+            }
+            if (ev.totalTokens != null) {
+                tokensUsed = ev.tokensUsed ?? ev.totalTokens;
+                if (ev.tokensTotal != null && ev.tokensTotal > 0) {
+                    tokensTotal = ev.tokensTotal;
+                }
+            }
+        }
+    }
+    if (tokensUsed == null || tokensTotal <= 0)
+        return null;
+    return {
+        tokensUsed,
+        tokensTotal,
+        ctxPct: Math.min(100, (tokensUsed / tokensTotal) * 100),
+    };
 }
 function handleJsonLine(active, line) {
     if (!line.trim())
@@ -263,7 +327,7 @@ function handleJsonLine(active, line) {
         }
     }
 }
-function handleExit(active, code) {
+async function handleExit(active, code) {
     const agentId = active.agentId;
     processes.delete(agentId);
     // finalize any open streaming message
@@ -282,8 +346,18 @@ function handleExit(active, code) {
     // so the caller's explicit status set is not overwritten.
     if (active.killed)
         return;
+    const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId);
+    let statusExtra = { endedAt: Date.now() };
+    if (agent?.cli === 'codex' && agent.claude_session_id) {
+        const latestCtx = await readLatestCodexContext(agent.claude_session_id);
+        if (latestCtx) {
+            db.prepare('UPDATE agents SET ctx_pct = ?, tokens_used = ?, tokens_total = ? WHERE id = ?')
+                .run(latestCtx.ctxPct, latestCtx.tokensUsed, latestCtx.tokensTotal, agentId);
+            statusExtra = { ...statusExtra, ...latestCtx };
+        }
+    }
     const status = (code === 0 || code === null) ? 'finished' : 'error';
-    updateAgentStatus(agentId, status, { endedAt: Date.now() });
+    updateAgentStatus(agentId, status, statusExtra);
     const sysMsg = code === 0 || code === null
         ? 'Agent finished'
         : `Process exited with code ${code}`;
@@ -371,7 +445,7 @@ export function spawnAgent(agentId, prompt) {
         broadcastAll('agent:message', { agentId, message: { id: msgId, kind: 'sys', content: msg, ts: Date.now() } });
         updateAgentStatus(agentId, 'error', { endedAt: Date.now() });
     });
-    proc.on('exit', (code) => handleExit(active, code));
+    proc.on('exit', (code) => { void handleExit(active, code); });
     updateAgentStatus(agentId, 'running');
     console.log(`[runner] spawned ${cmd} for agent ${agentId}`);
 }
