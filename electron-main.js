@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const os = require('os');
+const { fileURLToPath } = require('url');
 
 const PORT = 3001;
 let backendProcess = null;
@@ -191,6 +192,7 @@ async function createWindow() {
   // Open <a target="_blank"> links in the system browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http')) shell.openExternal(url);
+    else if (url.startsWith('file://')) shell.openPath(fileURLToPath(url));
     return { action: 'deny' };
   });
 

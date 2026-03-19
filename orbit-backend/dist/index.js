@@ -34,6 +34,14 @@ await workspaceRoutes(app);
 app.get('/api/config/models', async (_req, reply) => {
     return reply.send(loadModelsConfig());
 });
+// GET /api/config/info — expose runtime config to the UI
+app.get('/api/config/info', async (_req, reply) => {
+    const home = process.env.HOME ?? '';
+    const root = config.WORKSPACE_ROOT.startsWith(home)
+        ? '~' + config.WORKSPACE_ROOT.slice(home.length)
+        : config.WORKSPACE_ROOT;
+    return reply.send({ workspaceRoot: root });
+});
 // WebSocket endpoint
 app.get('/ws', { websocket: true }, (socket, req) => {
     addConnection(socket);

@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { getDb } from '../db/client.js';
 import { createAgentFolder, agentFolderPath, todoFolderPath, listWorkspaceFiles, resolveWorkspacePath } from '../fs/layout.js';
-import { spawnAgent, killAgent } from '../agent/runner.js';
+import { spawnAgent, killAgent, isAgentRunning } from '../agent/runner.js';
 import { generateWorkspaceMd } from '../agent/workspace-md.js';
 import { broadcastAll } from '../ws/handler.js';
 import { getCodexModelOption } from '../models-config.js';
@@ -260,6 +260,68 @@ export async function agentsRoutes(app) {
             db.prepare(`UPDATE agents SET status = 'idle' WHERE id = ?`).run(id);
             broadcastAll('agent:status', { agentId: id, status: 'idle' });
         }
+        return { ok: true };
+    });
+    // GET /api/agents/:id/diff — returns git diff in the workspace
+    app.get('/api/agents/:id/diff', async (req, reply) => {
+        const { id } = req.params;
+        const db = getDb();
+        const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        if (!agent)
+            return reply.code(404).send({ error: 'not found' });
+        const wsPath = resolveWorkspacePath(agent.workspace) || agent.workspace;
+        const { execFile } = await import('child_process');
+        const { promisify } = await import('util');
+        const execFileAsync = promisify(execFile);
+        try {
+            const { stdout } = await execFileAsync('git', ['diff', 'HEAD'], { cwd: wsPath, maxBuffer: 1024 * 1024 });
+            return { diff: stdout };
+        }
+        catch (err) {
+            // git diff exits non-zero only on error; try without HEAD for non-repo dirs
+            const msg = err instanceof Error ? err.message : String(err);
+            return { diff: '', error: msg };
+        }
+    });
+    // POST /api/agents/:id/compact — delete tool/think/sys messages + old out messages, keep last pair
+    app.post('/api/agents/:id/compact', async (req, reply) => {
+        const { id } = req.params;
+        const db = getDb();
+        const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        if (!agent)
+            return reply.code(404).send({ error: 'not found' });
+        if (isAgentRunning(id))
+            return reply.code(409).send({ error: 'agent is running' });
+        // Delete all tool, think, sys messages
+        db.prepare(`DELETE FROM messages WHERE agent_id = ? AND kind IN ('tool', 'think', 'sys')`).run(id);
+        // Keep only the last out message (remove the rest)
+        const lastOut = db.prepare(`SELECT id FROM messages WHERE agent_id = ? AND kind = 'out' ORDER BY ts DESC LIMIT 1`).get(id);
+        if (lastOut) {
+            db.prepare(`DELETE FROM messages WHERE agent_id = ? AND kind = 'out' AND id != ?`).run(id, lastOut.id);
+        }
+        // Add compaction marker
+        const msgId = nanoid(8);
+        db.prepare(`INSERT INTO messages (id, agent_id, kind, content, ts, is_streaming) VALUES (?, ?, 'sys', ?, ?, 0)`)
+            .run(msgId, id, 'Context compacted — older messages removed to reduce context size.', Date.now());
+        broadcastAll('agent:compacted', { agentId: id });
+        return { ok: true };
+    });
+    // POST /api/agents/:id/clean — delete all messages and reset session
+    app.post('/api/agents/:id/clean', async (req, reply) => {
+        const { id } = req.params;
+        const db = getDb();
+        const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
+        if (!agent)
+            return reply.code(404).send({ error: 'not found' });
+        if (isAgentRunning(id))
+            return reply.code(409).send({ error: 'agent is running' });
+        db.prepare(`DELETE FROM messages WHERE agent_id = ?`).run(id);
+        db.prepare(`UPDATE agents SET claude_session_id = NULL, ctx_pct = 0, tokens_used = 0, tokens_total = 0, tool_calls = 0, status = 'idle' WHERE id = ?`).run(id);
+        const msgId = nanoid(8);
+        db.prepare(`INSERT INTO messages (id, agent_id, kind, content, ts, is_streaming) VALUES (?, ?, 'sys', ?, ?, 0)`)
+            .run(msgId, id, 'Session cleaned — all messages cleared, context reset.', Date.now());
+        broadcastAll('agent:cleaned', { agentId: id });
+        broadcastAll('agent:status', { agentId: id, status: 'idle', ctxPct: 0, tokensUsed: 0, tokensTotal: 0, toolCalls: 0 });
         return { ok: true };
     });
     // DELETE /api/agents/:id
